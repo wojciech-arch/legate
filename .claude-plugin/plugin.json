@@ -3,8 +3,11 @@
   "description": "Lightweight orchestration and delegation layer for Claude Code; depends on superpowers for methodology.",
   "version": "0.1.0",
   "author": {
-    "name": "wm"
+    "name": "wojciech-arch"
   },
+  "homepage": "https://github.com/wojciech-arch/legate",
+  "repository": "https://github.com/wojciech-arch/legate",
+  "license": "MIT",
   "dependencies": [
     {
       "name": "superpowers",
