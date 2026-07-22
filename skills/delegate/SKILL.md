@@ -13,6 +13,8 @@ A delegated agent inherits none of your context. The spawn prompt IS the entire 
 
 This skill is the contract template. The router decides _when_ to delegate and _which_ role; this decides _what goes in the prompt_.
 
+Delegation has two motives, and both produce the same contract: **capability** (the work needs parallelism, fresh context, or independent judgment) and **cost** (the work is judgment-free bulk while you run on a premium tier — see the cost gate in `references/tiers.md`).
+
 ## The Handoff Contract
 
 Every spawn prompt MUST contain these six sections, by name. Fill in every one — an empty section means you haven't scoped the task yet.

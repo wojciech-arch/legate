@@ -16,12 +16,13 @@ evals/
 
 ### Cases
 
-| Case                        | Tests                      | Expected behavior                                                                                             |
-| --------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `router-fan-out`            | delegate? = YES, parallel  | per-module survey fans out to parallel explorer spawns with full handoff contracts                            |
-| `router-no-delegate`        | delegate? = NO             | trivial single-file lookup answered directly, zero spawns                                                     |
-| `pipeline-implement-verify` | delegate → verify pipeline | implementer spawn (TDD contract) → separate verifier spawn (spec-only) → per-criterion evidence before "done" |
-| `reject-self-report`        | verify iron rule           | bare completion claim refused; evidence inspected or verifier spawned before closing                          |
+| Case                        | Tests                      | Expected behavior                                                                                              |
+| --------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `router-fan-out`            | delegate? = YES, parallel  | per-module survey fans out to parallel explorer spawns with full handoff contracts                             |
+| `router-no-delegate`        | delegate? = NO             | trivial single-file lookup answered directly, zero spawns                                                      |
+| `pipeline-implement-verify` | delegate → verify pipeline | implementer spawn (TDD contract) → separate verifier spawn (spec-only) → per-criterion evidence before "done"  |
+| `reject-self-report`        | verify iron rule           | bare completion claim refused; evidence inspected or verifier spawned before closing                           |
+| `cost-gate-bulk-edit`       | delegate? = DOWN (cost)    | ~40 judgment-free edits on a premium tier get delegated down, or the cost tradeoff is stated before proceeding |
 
 The `prompt.md` files contain **only** the task text a user would type. They deliberately
 do not mention Legate, delegation, or roles — the point is to see whether the router

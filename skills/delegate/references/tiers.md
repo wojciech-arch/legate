@@ -15,6 +15,26 @@ Aliases (`haiku`, `sonnet`, `opus`, `fable`) are used deliberately instead of pi
 
 ⚠ = the `fable` step requires **explicit user confirmation** — see below.
 
+## Cost gate — the orchestrator's own tier
+
+Escalation tests below govern **workers**. This one governs **you**. You know which model you are running on; that makes your own token spend a routing input, not a constant.
+
+**When the work is judgment-free and voluminous — repetitive edits, renames, version bumps, mechanical migrations across many files — the orchestrator's tier is the expensive part.** A frontier-tier session editing 200 files inline can cost two orders of magnitude more than an `implementer` at `sonnet` or an `explorer` at `haiku` doing exactly the same edits.
+
+Before doing bulk mechanical work inline, check:
+
+1. **Does it need judgment?** Ambiguous cases, design decisions, anything where "which change is right" is unclear → it is not mechanical; do it yourself or use the implementer escalation test.
+2. **Is it voluminous?** Roughly: more than ~10 similar edits, or a repetitive pass over many files.
+3. **What tier are you on?** At `haiku` or `sonnet` there is nothing to save — proceed inline. At `opus` or `fable`, delegate down.
+
+If (1) is no, (2) is yes, and (3) is a premium tier: **delegate down**. Write the contract, spawn the cheapest capable role, verify the result as usual. The synthesis overhead is trivial against the saving.
+
+**If it cannot be delegated** (the work genuinely needs your accumulated context, or no Agent tool is available), say so before starting and give the user the choice:
+
+> This is ~200 mechanical edits. Running them here on the current premium tier is roughly $X; a `sonnet` worker would do the same work for a fraction of it. I can delegate, or you can switch the session model. Proceed inline?
+
+Never silently burn a frontier tier on work a cheap one would do identically. The user cannot approve a cost they were never shown.
+
 ## Escalation tests
 
 ### explorer: haiku → sonnet

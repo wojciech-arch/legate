@@ -12,15 +12,16 @@ It is deliberately small. Methodology — planning, TDD, debugging, code review 
 
 ## Why this exists
 
-Three failure modes show up constantly in agentic coding sessions:
+Four failure modes show up constantly in agentic coding sessions:
 
-| Failure                  | What it looks like                                                                                   | Legate's answer                                                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Under-delegation**     | The orchestrator burns its own context reading 40 files serially when four parallel workers would do | Router fires on ≥3 independent items and other objective triggers                                   |
-| **Over-delegation**      | A subagent is spawned to run one `grep`; synthesis overhead exceeds the work                         | "Delegating a grep is a bug" — an explicit NO branch with anti-rationalization table                |
-| **Trusted self-reports** | Worker says "all tests pass, task complete." It isn't, and nobody checked                            | Iron rule: a completion claim is never evidence. Inspect the diff or spawn a fresh-context verifier |
+| Failure                            | What it looks like                                                                                   | Legate's answer                                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Under-delegation**               | The orchestrator burns its own context reading 40 files serially when four parallel workers would do | Router fires on ≥3 independent items and other objective triggers                                   |
+| **Over-delegation**                | A subagent is spawned to run one `grep`; synthesis overhead exceeds the work                         | "Delegating a grep is a bug" — an explicit NO branch with anti-rationalization table                |
+| **Trusted self-reports**           | Worker says "all tests pass, task complete." It isn't, and nobody checked                            | Iron rule: a completion claim is never evidence. Inspect the diff or spawn a fresh-context verifier |
+| **Frontier tier doing grunt work** | A premium session bumps a version string in 200 files inline, at ~100x the necessary cost            | Cost gate: judgment-free bulk work is delegated **down** — or the price is stated before proceeding |
 
-Plus a cost dimension: not every task needs a frontier model, and the expensive ones shouldn't be chosen by accident. Every role is a **tier band** with a written escalation test.
+The last one runs both ways: workers get the cheapest model that can do the job, and the orchestrator checks its _own_ tier before doing grunt work inline. Every role is a **tier band** with a written escalation test, and no expensive model is chosen by accident.
 
 ---
 
@@ -32,6 +33,8 @@ flowchart TD
 
     R -->|"single file, sequential edit,<br/>trivial lookup"| SELF[Do it yourself<br/>no spawn]
     R -->|"≥3 independent items,<br/>context-heavy read,<br/>independent judgment,<br/>bounded implementation"| D[legate:delegate<br/>loads on demand]
+    R -->|"judgment-free bulk work<br/>on a premium tier"| COST[Delegate DOWN for cost<br/>or state the price first]
+    COST --> D
 
     D --> C[Write handoff contract<br/>Objective · Scope IN/OUT · Evidence<br/>Stop conditions · Do NOT · Sub-skills]
     C --> G["Print goal proposal<br/>multi-step efforts only"]
@@ -58,6 +61,7 @@ flowchart TD
 
     style R fill:#4a5568,color:#fff
     style V fill:#4a5568,color:#fff
+    style COST fill:#744210,color:#fff
     style STOP fill:#742a2a,color:#fff
     style DONE fill:#22543d,color:#fff
 ```
@@ -254,7 +258,7 @@ legate/
 
 ## Evals
 
-`evals/` holds four behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, and rejection of an unevidenced completion claim — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
+`evals/` holds five behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, and the cost gate on judgment-free bulk work — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 
@@ -263,7 +267,7 @@ The first round's scorecard is in `evals/results/`. Honest summary: the discipli
 These are enforced at review, not by tooling — they're what keeps the plugin small:
 
 - **≤10 always-loaded descriptions.** The standing context budget.
-- **Router body ≤1.5 KB.** A dispatcher with zero domain or methodology content.
+- **Router body ≤2 KB.** A dispatcher with zero domain or methodology content. (Raised from 1.5 KB once for the cost gate — a money-saving branch that pays for its own tokens.)
 - **Model names in exactly two places.** `tiers.md` and agent frontmatter.
 - **No enforcement hooks.** SessionStart injection only; nothing blocks tool calls.
 - **No `commands/` directory.** Skills and agents (commands are deprecated upstream).

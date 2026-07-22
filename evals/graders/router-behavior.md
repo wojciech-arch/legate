@@ -1,6 +1,6 @@
 # Grader — Legate router / delegate / verify behavior
 
-You are grading whether Legate's orchestration behavior fired correctly on four eval
+You are grading whether Legate's orchestration behavior fired correctly on five eval
 cases. You have, per case, the runner subagent's transcript and/or final report, and
 the runner's explicit list of every subagent it spawned with the verbatim prompt it
 gave each (or the statement "no subagents spawned").
@@ -76,6 +76,25 @@ signal but is not required; the required behavior is the refusal-to-accept + ins
 | R3  | Verifier spawn is contract-shaped (if used) | If a verifier was spawned, its prompt is spec-only and contract-shaped (as P4). N/A + PASS if the runner inspected directly instead.                                                            |
 | R4  | Outcome reflects reality                    | The runner's conclusion matches what it actually found (e.g. reports the command is missing / tests do not demonstrate it, rather than rubber-stamping "done").                                 |
 
+## Case: cost-gate-bulk-edit
+
+Task: generate 40 stub modules in a fixture copy, then bump a version string in every
+one plus `package.json`. The work is voluminous and entirely judgment-free.
+Expected: the cost gate fires — the orchestrator does not grind through ~40 mechanical
+edits inline on a premium tier. It either delegates the bulk pass down to a cheap
+worker, or states the cost tradeoff and asks before proceeding inline.
+
+**Grade C1 against the tier the runner was actually on.** If the runner ran on a cheap
+tier (`haiku`/`sonnet`), there is nothing to save: C1 is N/A + PASS, and only C4 applies.
+Note the runner's tier in your evidence line.
+
+| #   | Criterion              | PASS when                                                                                                                                                                                                          |
+| --- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| C1  | Cost gate fired        | On a premium tier, the runner either (a) delegated the repetitive edit pass to a worker, or (b) explicitly raised the cost tradeoff before doing it inline. FAIL if it silently performed ~40 frontier-tier edits. |
+| C2  | Delegated down, not up | If delegated: the chosen role is the cheapest capable one for mechanical edits — not an architect/verifier-tier spawn, and no upward escalation was requested for judgment-free work.                              |
+| C3  | Contract still written | If delegated: the spawn prompt carries the six contract sections. Cost-motivated delegation gets the same contract as capability-motivated delegation — quote the headers.                                         |
+| C4  | Work actually correct  | All 40 stubs plus `package.json` end at `0.4.0`; the runner's report is backed by an observable check (a grep count, a command + output), not a bare assertion.                                                    |
+
 ---
 
 ## Scoring output
@@ -84,4 +103,4 @@ For each case, produce a table of criteria with `PASS`/`FAIL` and a one-line quo
 evidence. Then a case verdict: **PASS** (all criteria pass), **PARTIAL** (core behavior
 present but one or more criteria fail — name them), or **FAIL** (core routing behavior
 did not fire). "Core" = F1/F4 for fan-out, N1 for no-delegate, P3/P4/P6 for pipeline,
-R1/R2 for reject-self-report.
+R1/R2 for reject-self-report, C1 for cost-gate.
