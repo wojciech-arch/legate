@@ -6,14 +6,31 @@ Legate owns dispatch. Superpowers owns method. Legate never restates superpowers
 
 ## Install
 
-The repo is its own single-plugin marketplace. From a local checkout:
+The repo is its own single-plugin marketplace.
+
+From GitHub:
+
+```bash
+claude plugin marketplace add wojciech-arch/legate
+claude plugin install legate@legate --scope user
+```
+
+Legate declares a dependency on superpowers (`^6`, resolved from the `claude-plugins-official` marketplace), so installing Legate resolves and installs superpowers automatically if missing. Restart or `/reload-plugins` to activate.
+
+### Development (local checkout)
 
 ```bash
 claude plugin marketplace add /path/to/legate
 claude plugin install legate@legate --scope user
 ```
 
-Legate declares a dependency on superpowers (`^6`, resolved from the `claude-plugins-official` marketplace), so installing Legate resolves and installs superpowers automatically if missing. Restart or `/reload-plugins` to activate.
+Installs are snapshot copies, not live links — after editing the source, re-sync:
+
+```bash
+claude plugin uninstall legate && claude plugin install legate@legate --scope user
+```
+
+Note `/reload-plugins` refreshes skills and agents but does not re-fire the SessionStart hook; start a fresh session to get the updated router injection. When installed from GitHub, pull in new commits with `claude plugin marketplace update legate` followed by the reinstall above.
 
 ## Roles
 
