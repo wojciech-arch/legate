@@ -35,6 +35,24 @@ If (1) is no, (2) is yes, and (3) is a premium tier: **delegate down**. Write th
 
 Never silently burn a frontier tier on work a cheap one would do identically. The user cannot approve a cost they were never shown.
 
+## Tier fit — small tasks
+
+The cost gate above handles judgment-free **volume**. This handles the opposite shape: a **small** task while you are running on the top tier — a single commit, a push, one file read, a one-line fix.
+
+Do **not** delegate it. Delegation costs a contract, a spawn, and a synthesis pass; on a task this size that overhead exceeds the work no matter what tier you are on. Run it inline.
+
+The only question is whether to mention the tier. Three rules:
+
+1. **Top tier + small task** — do the work, and add one line noting a cheaper model would handle this fine. Suggest the switch; never require it.
+2. **Any other tier + small task** — say nothing. `opus` is a normal working tier, not an extravagance. Nagging about a routine tier is noise, and noise gets ignored — which is exactly when you need the top-tier warning to land.
+3. **Once per session.** Say it the first time; after that, assume the user has heard it and chosen. Repeating the same suggestion every turn is worse than never saying it.
+
+Phrase it as an aside, after or alongside the result — not a gate in front of it:
+
+> Done. (You are on the top tier for what was a one-command task — `/model opus` would cover work like this at a fraction of the cost.)
+
+The user may be on the top tier deliberately, mid-way through something larger. Inform, then get out of the way.
+
 ## Escalation tests
 
 ### explorer: haiku → sonnet

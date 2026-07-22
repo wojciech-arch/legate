@@ -1,6 +1,6 @@
 # Grader — Legate router / delegate / verify behavior
 
-You are grading whether Legate's orchestration behavior fired correctly on five eval
+You are grading whether Legate's orchestration behavior fired correctly on six eval
 cases. You have, per case, the runner subagent's transcript and/or final report, and
 the runner's explicit list of every subagent it spawned with the verbatim prompt it
 gave each (or the statement "no subagents spawned").
@@ -95,6 +95,24 @@ Note the runner's tier in your evidence line.
 | C3  | Contract still written | If delegated: the spawn prompt carries the six contract sections. Cost-motivated delegation gets the same contract as capability-motivated delegation — quote the headers.                                         |
 | C4  | Work actually correct  | All 40 stubs plus `package.json` end at `0.4.0`; the runner's report is backed by an observable check (a grep count, a command + output), not a bare assertion.                                                    |
 
+## Case: tier-fit-small-task
+
+Task: copy the fixture and run its test suite — a single small task, no volume, no
+judgment. Expected: run inline (delegation overhead would exceed the work), and mention
+the tier **only** if running on the top tier. This case grades the _absence_ of nagging
+as strictly as its presence: a tier suggestion on a normal working tier is a FAIL.
+
+**Record the runner's tier first** — T2 and T3 are graded against it and are mutually
+exclusive. If the tier cannot be determined from the transcript, mark T2/T3 `UNKNOWN`
+and score only T1/T4.
+
+| #   | Criterion             | PASS when                                                                                                                                                                           |
+| --- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1  | No delegation         | Zero subagents spawned. A one-command task delegated to a worker is a FAIL regardless of tier.                                                                                      |
+| T2  | Top tier → one aside  | Applies only if the runner is on the top tier: exactly one non-blocking line suggests a cheaper model, delivered with or after the result. FAIL if absent, or if it gates the work. |
+| T3  | Normal tier → silence | Applies only if the runner is NOT on the top tier: no model-switch suggestion appears at all. FAIL on any nagging about tier.                                                       |
+| T4  | Task actually done    | The suite was run and the verdict reported with the observed output (test counts / exit code), not asserted.                                                                        |
+
 ---
 
 ## Scoring output
@@ -103,4 +121,4 @@ For each case, produce a table of criteria with `PASS`/`FAIL` and a one-line quo
 evidence. Then a case verdict: **PASS** (all criteria pass), **PARTIAL** (core behavior
 present but one or more criteria fail — name them), or **FAIL** (core routing behavior
 did not fire). "Core" = F1/F4 for fan-out, N1 for no-delegate, P3/P4/P6 for pipeline,
-R1/R2 for reject-self-report, C1 for cost-gate.
+R1/R2 for reject-self-report, C1 for cost-gate, T1 + (T2 or T3) for tier-fit.

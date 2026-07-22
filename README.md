@@ -21,7 +21,7 @@ Four failure modes show up constantly in agentic coding sessions:
 | **Trusted self-reports**           | Worker says "all tests pass, task complete." It isn't, and nobody checked                            | Iron rule: a completion claim is never evidence. Inspect the diff or spawn a fresh-context verifier |
 | **Frontier tier doing grunt work** | A premium session bumps a version string in 200 files inline, at ~100x the necessary cost            | Cost gate: judgment-free bulk work is delegated **down** — or the price is stated before proceeding |
 
-The last one runs both ways: workers get the cheapest model that can do the job, and the orchestrator checks its _own_ tier before doing grunt work inline. Every role is a **tier band** with a written escalation test, and no expensive model is chosen by accident.
+The last one runs both ways: workers get the cheapest model that can do the job, and the orchestrator checks its _own_ tier before working inline. Judgment-free **volume** on a premium tier gets delegated down; a **small** task on the top tier stays inline but earns a one-time aside that a cheaper model would cover it. On any normal tier, small work proceeds in silence — a warning that fires constantly is one nobody reads. Every role is a **tier band** with a written escalation test, and no expensive model is chosen by accident.
 
 ---
 
@@ -34,6 +34,7 @@ flowchart TD
     R -->|"single file, sequential edit,<br/>trivial lookup"| SELF[Do it yourself<br/>no spawn]
     R -->|"≥3 independent items,<br/>context-heavy read,<br/>independent judgment,<br/>bounded implementation"| D[legate:delegate<br/>loads on demand]
     R -->|"judgment-free bulk work<br/>on a premium tier"| COST[Delegate DOWN for cost<br/>or state the price first]
+    SELF -.->|"top tier only,<br/>once per session"| TIP["Aside: a cheaper model<br/>would cover this"]
     COST --> D
 
     D --> C[Write handoff contract<br/>Objective · Scope IN/OUT · Evidence<br/>Stop conditions · Do NOT · Sub-skills]
@@ -62,6 +63,7 @@ flowchart TD
     style R fill:#4a5568,color:#fff
     style V fill:#4a5568,color:#fff
     style COST fill:#744210,color:#fff
+    style TIP fill:#744210,color:#fff
     style STOP fill:#742a2a,color:#fff
     style DONE fill:#22543d,color:#fff
 ```
@@ -258,7 +260,7 @@ legate/
 
 ## Evals
 
-`evals/` holds five behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, and the cost gate on judgment-free bulk work — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
+`evals/` holds six behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, and tier fit on small tasks (which grades the *absence* of nagging as strictly as its presence) — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 

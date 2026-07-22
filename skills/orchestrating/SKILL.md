@@ -13,7 +13,7 @@ You are the dispatcher: delegate?, role?, handoff? Announce "Using orchestrating
 
 **DOWN (cost)** — judgment-free bulk work (repetitive edits, renames, version bumps across many files) while you run on a premium tier: delegate to the cheapest capable role rather than burn frontier tokens. Volume, not difficulty, is the signal.
 
-**NO** — single-file reads, sequential edits, trivial lookups. Do these yourself. Delegating a grep is a bug.
+**NO** — single-file reads, sequential edits, trivial lookups: do them yourself; delegating a grep is a bug. On the top tier only, add one line offering a cheaper model — once per session — then do the task anyway.
 
 ## 2. Role
 
