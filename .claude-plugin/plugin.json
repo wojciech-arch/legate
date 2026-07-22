@@ -1,0 +1,15 @@
+{
+  "name": "legate",
+  "description": "Lightweight orchestration and delegation layer for Claude Code; depends on superpowers for methodology.",
+  "version": "0.1.0",
+  "author": {
+    "name": "wm"
+  },
+  "dependencies": [
+    {
+      "name": "superpowers",
+      "version": "^6",
+      "marketplace": "claude-plugins-official"
+    }
+  ]
+}

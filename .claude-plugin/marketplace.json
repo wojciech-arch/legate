@@ -1,0 +1,15 @@
+{
+  "name": "legate",
+  "owner": {
+    "name": "wm"
+  },
+  "description": "Legate — orchestration/delegation layer for Claude Code.",
+  "allowCrossMarketplaceDependenciesOn": ["claude-plugins-official"],
+  "plugins": [
+    {
+      "name": "legate",
+      "source": "./",
+      "description": "Lightweight orchestration and delegation layer for Claude Code; depends on superpowers for methodology."
+    }
+  ]
+}

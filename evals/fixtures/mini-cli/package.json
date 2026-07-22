@@ -1,0 +1,11 @@
+{
+  "name": "mini-cli",
+  "version": "0.3.1",
+  "description": "Tiny fixture CLI for legate evals",
+  "bin": {
+    "mini": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}
