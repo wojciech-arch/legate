@@ -278,6 +278,32 @@ The first round's scorecard is in `evals/results/`. Honest summary: the discipli
 
 `evals/cost/` is that harness applied to the money question: real `claude -p` A/B runs (Legate on vs off), scored on the CLI's own per-model `total_cost_usd`. The first round is blunt. Measured on `opus`, the cost gate's delegation did **not** fire in headless one-shot mode, so Legate ran **4–14% more expensive** across three tasks (a trivial lookup, a 20-file version bump, a 25-file survey). Measured _directly_, the delegation pattern it is supposed to produce — haiku explorers reading the files, `opus` synthesizing — is **28% cheaper** on the read-heavy survey (**44% projected on `fable`**). The savings are real but gated on delegation actually triggering; `evals/cost/results/` has the numbers and `cost.mjs` reprices them for any tier.
 
+### Measured numbers (2026-07-23)
+
+All figures are the CLI's own `total_cost_usd` from real `claude -p` sessions, CEO on `opus`, against small fixtures — **read the percentage, not the dollars.**
+
+**Legate as it auto-triggers (headless one-shot):**
+
+| Task                        | Baseline (no Legate) | Legate on | Δ          | Delegated?                     |
+| --------------------------- | -------------------- | --------- | ---------- | ------------------------------ |
+| trivial-lookup (1 file)     | $0.3024              | $0.3210   | **+6.1%**  | no — correct (below threshold) |
+| bulk-edit (20 files)        | $0.4646              | $0.4841   | **+4.2%**  | no — correct (`sed`-able)      |
+| wide-read-survey (25 files) | $0.8967              | $1.0195   | **+13.7%** | no — **missed**                |
+
+Auto-triggered, Legate was **4–14% dearer** on every task: the router injects but the model kept doing the work itself. Two of the three non-delegations were the right call; the survey was a genuine miss.
+
+**The delegation pattern, measured directly (survey, `opus`):**
+
+| Strategy                                                | Cost        |
+| ------------------------------------------------------- | ----------- |
+| Baseline — `opus` does the whole survey                 | $0.8967     |
+| Legate pattern — 3 `haiku` explorers + `opus` synthesis | **$0.6450** |
+| **Saving**                                              | **−28.1%**  |
+
+**Projected to a `fable` CEO** (re-priced from the same measured tokens; `fable` is 2× `opus`): baseline $1.7934 → delegation pattern $0.9941 = **−44.6%**.
+
+The takeaway in one line: on the _same_ task, the cost is $0.645 if it delegates and $1.020 if it doesn't — a **37% swing that is entirely "did delegation fire."** Legate's economics are favorable on read-heavy work; its bottleneck is triggering, not the trade.
+
 ## Design invariants
 
 These are enforced at review, not by tooling — they're what keeps the plugin small:
