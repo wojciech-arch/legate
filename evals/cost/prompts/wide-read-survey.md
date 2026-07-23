@@ -1,0 +1,1 @@
+Produce a map of every file under `skills/`, `agents/`, and `evals/` in this repository. For each file, give one line: its purpose, and what it depends on or cross-references. Group by directory. This is read-only — do not modify anything. I want the full map, so cover every file, not a sample.

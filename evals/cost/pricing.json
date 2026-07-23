@@ -1,0 +1,18 @@
+{
+  "_comment": "Per-1M-token USD prices. Single source for cost.mjs / aggregate.mjs. Mirror of skills/delegate/references/tiers.md tier bands — keep in sync when Anthropic reprices. 'in'=input, 'out'=output. Cache prices are ratios of that model's input price and are the same ratios for every model: read = 0.1x input, write(1h) = 2.0x input. Verified against `claude -p --output-format json` total_cost_usd on 2026-07-23.",
+  "_updated": "2026-07-23",
+  "cache_read_mult": 0.1,
+  "cache_write_mult": 2.0,
+  "models": {
+    "haiku": { "in": 1.0, "out": 5.0 },
+    "sonnet": {
+      "in": 3.0,
+      "out": 15.0,
+      "in_intro": 2.0,
+      "out_intro": 10.0,
+      "_intro_until": "2026-08-31"
+    },
+    "opus": { "in": 5.0, "out": 25.0 },
+    "fable": { "in": 10.0, "out": 50.0 }
+  }
+}

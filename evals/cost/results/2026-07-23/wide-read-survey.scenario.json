@@ -1,0 +1,51 @@
+{
+  "case": "wide-read-survey (25 files, read-only)",
+  "ceo": "opus",
+  "_source": "measured via claude -p --output-format json on 2026-07-23; baseline = legate disabled; legate arm = the delegation pattern (3 haiku explorer legs + 1 opus synthesis), which is what the router is supposed to produce. The auto-triggered legate arm did NOT delegate and cost $1.0195 — see scorecard.",
+  "arms": {
+    "baseline": [
+      {
+        "role": "ceo",
+        "model": "opus",
+        "in": 9,
+        "out": 6035,
+        "cr": 231106,
+        "cw": 63021
+      }
+    ],
+    "legate": [
+      {
+        "role": "explorer",
+        "model": "haiku",
+        "in": 23,
+        "out": 930,
+        "cr": 79406,
+        "cw": 37535
+      },
+      {
+        "role": "explorer",
+        "model": "haiku",
+        "in": 23,
+        "out": 727,
+        "cr": 79336,
+        "cw": 31962
+      },
+      {
+        "role": "explorer",
+        "model": "haiku",
+        "in": 58,
+        "out": 3011,
+        "cr": 299835,
+        "cw": 43795
+      },
+      {
+        "role": "synthesis",
+        "model": "opus",
+        "in": 2,
+        "out": 1835,
+        "cr": 15243,
+        "cw": 29562
+      }
+    ]
+  }
+}

@@ -1,0 +1,1 @@
+This directory is a copy of a tiny Node CLI. Generate 20 stub module files under `src/plugins/` here — each a small file exporting a `name` string and a `version` string set to `"0.3.1"`. Then bump every one of those `version` strings to `"0.4.0"`, and update `package.json`'s version to match. Report what you did when finished.
