@@ -19,12 +19,14 @@ Aliases (`haiku`, `sonnet`, `opus`, `fable`) are used deliberately instead of pi
 
 Escalation tests below govern **workers**. This one governs **you**. You know which model you are running on; that makes your own token spend a routing input, not a constant.
 
-**When the work is judgment-free and voluminous — repetitive edits, renames, version bumps, mechanical migrations across many files — the orchestrator's tier is the expensive part.** A frontier-tier session editing 200 files inline can cost two orders of magnitude more than an `implementer` at `sonnet` or an `explorer` at `haiku` doing exactly the same edits.
+**The expense to watch is premium tokens, not file count.** When work makes a premium-tier session process a large token volume with no judgment — reading many files into context, or generating many bespoke files — a cheaper `explorer`/`implementer` does the identical work at a fraction of the token price. That is the case to delegate down.
 
-Before doing bulk mechanical work inline, check:
+**Scriptable edits are NOT that case.** Renames, version bumps, mechanical find-and-replace across many files collapse into one `sed`/script command — near-zero work tokens no matter how many files. The cost there is fixed session overhead, and delegating only _adds_ a second session's overhead. Measured (`evals/cost/`): a 20-file version bump on `opus` cost essentially the same delegated or inline, and the delegated arm was slightly _more_ expensive. Do scriptable bulk inline. "Delegating a `sed` is a bug."
+
+Before offloading bulk work, check:
 
 1. **Does it need judgment?** Ambiguous cases, design decisions, anything where "which change is right" is unclear → it is not mechanical; do it yourself or use the implementer escalation test.
-2. **Is it voluminous?** Roughly: more than ~10 similar edits, or a repetitive pass over many files.
+2. **Would doing it inline cost many premium tokens?** Not "how many files" — "how many tokens." Reading 40 files into an `opus` context, or generating 40 distinct modules, is expensive; a `sed` over 400 files is not. If a short script does it, it is not voluminous in the sense that matters.
 3. **What tier are you on?** At `haiku` or `sonnet` there is nothing to save — proceed inline. At `opus` or `fable`, delegate down.
 
 If (1) is no, (2) is yes, and (3) is a premium tier: **delegate down**. Write the contract, spawn the cheapest capable role, verify the result as usual. The synthesis overhead is trivial against the saving.

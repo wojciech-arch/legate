@@ -14,14 +14,16 @@ It is deliberately small. Methodology — planning, TDD, debugging, code review 
 
 Four failure modes show up constantly in agentic coding sessions:
 
-| Failure                            | What it looks like                                                                                   | Legate's answer                                                                                     |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Under-delegation**               | The orchestrator burns its own context reading 40 files serially when four parallel workers would do | Router fires on ≥3 independent items and other objective triggers                                   |
-| **Over-delegation**                | A subagent is spawned to run one `grep`; synthesis overhead exceeds the work                         | "Delegating a grep is a bug" — an explicit NO branch with anti-rationalization table                |
-| **Trusted self-reports**           | Worker says "all tests pass, task complete." It isn't, and nobody checked                            | Iron rule: a completion claim is never evidence. Inspect the diff or spawn a fresh-context verifier |
-| **Frontier tier doing grunt work** | A premium session bumps a version string in 200 files inline, at ~100x the necessary cost            | Cost gate: judgment-free bulk work is delegated **down** — or the price is stated before proceeding |
+| Failure                            | What it looks like                                                                                                   | Legate's answer                                                                                                                                      |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Under-delegation**               | The orchestrator burns its own context reading 40 files serially when four parallel workers would do                 | Router fires on ≥3 independent items and other objective triggers                                                                                    |
+| **Over-delegation**                | A subagent is spawned to run one `grep`; synthesis overhead exceeds the work                                         | "Delegating a grep is a bug" — an explicit NO branch with anti-rationalization table                                                                 |
+| **Trusted self-reports**           | Worker says "all tests pass, task complete." It isn't, and nobody checked                                            | Iron rule: a completion claim is never evidence. Inspect the diff or spawn a fresh-context verifier                                                  |
+| **Frontier tier doing grunt work** | A premium session reads 40 files into its own context, or generates 40 bespoke ones, when a cheap worker would do it | Cost gate: high-premium-token bulk (reads, generation) is delegated **down**. Scriptable edits stay inline — measured, delegating a `sed` costs more |
 
-The last one runs both ways: workers get the cheapest model that can do the job, and the orchestrator checks its _own_ tier before working inline. Judgment-free **volume** on a premium tier gets delegated down; a **small** task on the top tier stays inline but earns a one-time aside that a cheaper model would cover it. On any normal tier, small work proceeds in silence — a warning that fires constantly is one nobody reads. Every role is a **tier band** with a written escalation test, and no expensive model is chosen by accident.
+The last one runs both ways: workers get the cheapest model that can do the job, and the orchestrator checks its _own_ tier before working inline. What triggers a down-delegation is **premium-token volume** — bulk reads or bespoke generation — not file count; scriptable edits (a `sed` over 400 files) are near-free inline and stay there. A **small** task on the top tier also stays inline, earning a one-time aside that a cheaper model would cover it; on any normal tier small work proceeds in silence — a warning that fires constantly is one nobody reads. Every role is a **tier band** with a written escalation test, and no expensive model is chosen by accident.
+
+A caveat the measurements earned (`evals/cost/`): these cost savings are **narrow and conditional**. They need a premium orchestrator, genuinely offloadable token volume, and delegation to actually fire — and in headless one-shot runs it often doesn't. On light or scriptable work Legate is a small tax, not a saving. Its dependable value is **verification and parallelism**, not a lower bill; treat cost savings as a bonus on heavy read/generation workloads, not a general promise.
 
 ---
 
@@ -33,7 +35,7 @@ flowchart TD
 
     R -->|"single file, sequential edit,<br/>trivial lookup"| SELF[Do it yourself<br/>no spawn]
     R -->|"≥3 independent items,<br/>context-heavy read,<br/>independent judgment,<br/>bounded implementation"| D[legate:delegate<br/>loads on demand]
-    R -->|"judgment-free bulk work<br/>on a premium tier"| COST[Delegate DOWN for cost<br/>or state the price first]
+    R -->|"bulk reads or generation<br/>on a premium tier"| COST[Delegate DOWN for cost<br/>or state the price first]
     SELF -.->|"top tier only,<br/>once per session"| TIP["Aside: a cheaper model<br/>would cover this"]
     COST --> D
 
@@ -274,12 +276,14 @@ legate/
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 
+`evals/cost/` is that harness applied to the money question: real `claude -p` A/B runs (Legate on vs off), scored on the CLI's own per-model `total_cost_usd`. The first round is blunt. Measured on `opus`, the cost gate's delegation did **not** fire in headless one-shot mode, so Legate ran **4–14% more expensive** across three tasks (a trivial lookup, a 20-file version bump, a 25-file survey). Measured _directly_, the delegation pattern it is supposed to produce — haiku explorers reading the files, `opus` synthesizing — is **28% cheaper** on the read-heavy survey (**44% projected on `fable`**). The savings are real but gated on delegation actually triggering; `evals/cost/results/` has the numbers and `cost.mjs` reprices them for any tier.
+
 ## Design invariants
 
 These are enforced at review, not by tooling — they're what keeps the plugin small:
 
 - **≤10 always-loaded descriptions.** The standing context budget.
-- **Router body ≤2 KB.** A dispatcher with zero domain or methodology content. (Raised from 1.5 KB once for the cost gate — a money-saving branch that pays for its own tokens.)
+- **Router body ≤2 KB.** A dispatcher with zero domain or methodology content. (Raised from 1.5 KB once for the cost gate — a narrow branch that helps only on heavy read/generation workloads; see `evals/cost/`.)
 - **Model names in exactly two places.** `tiers.md` and agent frontmatter.
 - **No enforcement hooks.** SessionStart injection only; nothing blocks tool calls.
 - **No `commands/` directory.** Skills and agents (commands are deprecated upstream).

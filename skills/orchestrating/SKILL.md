@@ -11,7 +11,7 @@ You are the dispatcher: delegate?, role?, handoff? Announce "Using orchestrating
 
 **YES** — ≥3 independent items (count items, not repo size); context-heavy read with a small conclusion; independent judgment (design review, verifying done-claims); bounded planned implementation.
 
-**DOWN (cost)** — judgment-free bulk work (repetitive edits, renames, version bumps across many files) while you run on a premium tier: delegate to the cheapest capable role rather than burn frontier tokens. Volume, not difficulty, is the signal.
+**DOWN (cost)** — bulk work that burns many premium tokens without judgment (many-file reads, bespoke generation) on a premium tier: delegate to the cheapest capable role. Sed-able edits (renames, version bumps) are near-free inline — don't delegate those.
 
 **NO** — single-file reads, sequential edits, trivial lookups: do them yourself; delegating a grep is a bug. On the top tier only, add one line offering a cheaper model — once per session — then do the task anyway.
 
@@ -30,12 +30,12 @@ Before spawning, read **REQUIRED SUB-SKILL: legate:delegate**. For verification 
 
 ## Red flags — STOP
 
-| Thought                    | Reality                                                                          |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| "Too small to delegate"    | Tiny tasks skip delegation; there is no half-handoff.                            |
-| "Subagent said it's done"  | Self-reports aren't accepted; inspect evidence or spawn a verifier.              |
-| "Delegate to save context" | Delegation costs synthesis; only delegate when §1 holds.                         |
-| "I'll just edit all 200"   | Premium tier doing judgment-free bulk work — delegate DOWN or say what it costs. |
+| Thought                    | Reality                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| "Too small to delegate"    | Tiny tasks skip delegation; there is no half-handoff.               |
+| "Subagent said it's done"  | Self-reports aren't accepted; inspect evidence or spawn a verifier. |
+| "Delegate to save context" | Delegation costs synthesis; only delegate when §1 holds.            |
+| "I'll read all 40 myself"  | Premium tier bulk-reading — delegate DOWN to explorers.             |
 
 ## Methodology
 
