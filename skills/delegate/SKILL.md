@@ -88,6 +88,24 @@ The Completion condition line from the contract IS the goal text — write it on
 
 `/goal` is user-facing only (no programmatic API; subagents never see it) — propose it, never assume it is set, and keep the Completion condition in every contract regardless. Skip the proposal for single-spawn quick tasks; it is for efforts that will span multiple turns or spawns.
 
+## Worker lifecycle — one-shot by default
+
+A spawned worker can be left to finish and report (transactional), or kept alive and messaged again, resuming with its transcript intact (conversational). **Default to transactional.** The contract exists so that conversation is unnecessary.
+
+| Situation                              | Do this            | Why                                                                                    |
+| -------------------------------------- | ------------------ | -------------------------------------------------------------------------------------- |
+| New task, specifiable up front         | Fresh spawn        | Pays only the handoff; nothing worth inheriting.                                       |
+| Continuing the **same** task           | Resume that worker | Re-establishing its context costs more than replaying it.                              |
+| Different task, same area              | Fresh spawn        | Resuming replays history irrelevant to the new task — you pay for it and it distracts. |
+| Endpoint genuinely unknowable at spawn | Resume as needed   | Exploratory work where the next question depends on the last answer.                   |
+
+Two rules that are not negotiable:
+
+- **Needing to message a worker to explain what you meant is a diagnostic, not a workflow.** The contract was underspecified. Fix the contract; a mid-flight clarification lands in an agent already committed to a reading of the task.
+- **Never converse with a verifier.** Fresh context and isolation from the producer's account is the entire reason it exists. Resuming it, or answering its questions with the implementer's narrative, destroys the property you spawned it for. Verifier spawns are strictly one-shot.
+
+Want the benefits of accumulated state without the liabilities? **Carry state externally, not in a long-lived agent** — the Completion condition, files on disk, a written plan. Then spawn fresh workers against it. Long-lived contexts drift, and the accumulated tokens buy less than they cost.
+
 ## Parallel dispatch
 
 Independent spawns (no shared files, no ordering dependency) go out as **multiple Agent calls in a single message** — that is what makes them run concurrently. One call per message runs them sequentially and wastes wall-clock time. REQUIRED BACKGROUND: superpowers:dispatching-parallel-agents for grouping into independent domains.

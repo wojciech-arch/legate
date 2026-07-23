@@ -196,6 +196,16 @@ Failures do not go back as "please fix the above." Each becomes a **new bounded 
 
 ---
 
+## Worker lifecycle
+
+A spawned worker can finish and report (transactional) or be kept alive and messaged again with its transcript intact (conversational). Legate defaults to **transactional** — the handoff contract exists so conversation is unnecessary. Resume a worker only for the _same_ task or genuinely exploratory work whose endpoint isn't knowable at spawn time; for a new task, even in the same area, spawn fresh rather than replay irrelevant history.
+
+Two hard rules: needing to message a worker to clarify what you meant is a **spec smell**, not a workflow — fix the contract; and a **verifier is never conversational** — fresh context isolated from the producer's account is the whole point of it. Prefer carrying state externally (the completion condition, files, a written plan) and spawning fresh workers against it over accumulating it in a long-lived agent that drifts.
+
+The published guidance backs transactional-by-default and the documented drift of long-lived contexts; the stricter claim that _verifiers_ specifically must be isolated is Legate's own inference, not established practice — applied here because the downside of being wrong is nil.
+
+---
+
 ## Install
 
 The repo is its own single-plugin marketplace.
@@ -260,7 +270,7 @@ legate/
 
 ## Evals
 
-`evals/` holds six behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, and tier fit on small tasks (which grades the *absence* of nagging as strictly as its presence) — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
+`evals/` holds six behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, and tier fit on small tasks (which grades the _absence_ of nagging as strictly as its presence) — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 
