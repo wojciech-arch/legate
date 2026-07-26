@@ -15,6 +15,8 @@ Aliases (`haiku`, `sonnet`, `opus`, `fable`) are used deliberately instead of pi
 
 ⚠ = the `fable` step requires **explicit user confirmation** — see below.
 
+`opus` is the default brain everywhere, including the orchestrator seat. The `fable` step is not "the same job done better" — it is a different job (sustained long-horizon reasoning), and for recency- or latency-sensitive work `opus` is the **better** model outright, not just the cheaper one.
+
 ## Cost gate — the orchestrator's own tier
 
 Escalation tests below govern **workers**. This one governs **you**. You know which model you are running on; that makes your own token spend a routing input, not a constant.
@@ -28,6 +30,8 @@ Before offloading bulk work, check:
 1. **Does it need judgment?** Ambiguous cases, design decisions, anything where "which change is right" is unclear → it is not mechanical; do it yourself or use the implementer escalation test.
 2. **Would doing it inline cost many premium tokens?** Not "how many files" — "how many tokens." Reading 40 files into an `opus` context, or generating 40 distinct modules, is expensive; a `sed` over 400 files is not. If a short script does it, it is not voluminous in the sense that matters.
 3. **What tier are you on?** At `haiku` or `sonnet` there is nothing to save — proceed inline. At `opus` or `fable`, delegate down.
+
+**If you are orchestrating _on_ `fable`, this gate matters twice as much.** `fable` is a defensible CEO for genuinely long-horizon work, but every token it spends on grunt work is billed at 2× `opus` and 10× `haiku`. Measured on the read-heavy survey (`evals/cost/`): delegating the bulk reads to `haiku` saves **32% with an `opus` CEO and ~48% with a `fable` CEO**. The more expensive the brain you are running, the less of the cheap work it should touch — keep `fable` on the judgment and push everything else down.
 
 If (1) is no, (2) is yes, and (3) is a premium tier: **delegate down**. Write the contract, spawn the cheapest capable role, verify the result as usual. The synthesis overhead is trivial against the saving.
 
@@ -84,15 +88,23 @@ Allowed when stakes are low AND the diff is small (non-user-facing, single file)
 
 ### architect / verifier: opus → fable — ONLY when REALLY needed, ALWAYS with user confirmation
 
-`fable` costs ~2× `opus` per token and runs minutes-long turns. It is justified only when `opus` is demonstrably insufficient, not merely when the task is important:
+`opus` is the **default brain for everything**, orchestrator included — Anthropic's own guidance is to start there for complex agentic coding and reach for `fable` only when you need the highest available capability. `fable` costs 2× per token and runs slower, so it has to earn the difference on something specific.
 
-- An `opus` architect/verifier pass already ran and was **inconclusive or contradicted itself**, and the decision is expensive to reverse (system-wide architecture, data migration, public API commitment).
-- The analysis genuinely needs very-long-horizon reasoning across a large surface that `opus` failed to hold together.
+**What `fable` is actually for.** It is positioned as next-generation intelligence for **long-running agents** — sustained, long-horizon reasoning held together across a large surface. That is its edge, and it is the only thing worth paying 2× for:
 
-**Raise effort before you raise tier.** `opus` supports `effort` up to `max`; a harder-thinking `opus` pass is a real rung on the ladder and costs the same per token as a normal one. An `opus` run at default effort that came back thin is **not** evidence that `opus` is insufficient — it is evidence you have not tried `opus` properly yet. Exhaust that rung first; only a `max`-effort `opus` pass that still fails is grounds to ask for `fable`.
+- Long-horizon work where the reasoning must stay coherent over a very large surface (system-wide architecture, a data migration plan, a public API commitment).
+- Decisions expensive enough to reverse that the better answer is worth double.
 
-**Check recency before escalating.** `fable`'s knowledge cutoff is _older_ than `opus`'s (Jan 2026 vs May 2026). For anything turning on recent APIs, releases, or ecosystem facts, `fable` is the **worse** choice despite costing twice as much. Escalate for reasoning depth, never for freshness.
+**Where `opus` is the better model, not merely the cheaper one** — do not escalate for these:
 
-**Confirmation is mandatory, never implied.** Before a `fable` spawn, ask the user explicitly — name the task, why `opus` was insufficient, and the cost difference — and proceed only on their yes. Prior approval of one `fable` spawn does not carry over to the next.
+- **Recency.** `fable`'s knowledge cutoff is _older_ (Jan 2026 vs `opus`'s May 2026). Anything turning on recent APIs, releases, or ecosystem facts gets a **worse** answer at twice the price.
+- **Latency.** `fable` is slower; `opus` is moderate. Interactive or time-boxed work wants `opus`.
+- **Throughput guarantees.** Priority Tier covers `opus`, not `fable`.
+
+**Prefer going direct over escalating.** If the task is _already_ recognisable as long-horizon `fable` work, spawn `fable` first rather than running `opus` and escalating after it disappoints. A wasted `opus` pass plus a `fable` pass costs about 1.5× `fable` alone — the reactive path is the expensive one. Escalate-after-failure only when you genuinely could not tell up front.
+
+**On the reactive path, raise effort before you raise tier.** `opus` supports `effort` up to `max`, and a harder-thinking pass costs the same per token as a normal one. An `opus` run at default effort that came back thin is **not** evidence that `opus` is insufficient — it is evidence you have not tried `opus` properly yet. Exhaust that free rung first; only a `max`-effort `opus` pass that still fails justifies escalating. (This is the escalate-after-failure path only — it does not apply when the task was recognisable as `fable` work up front.)
+
+**Confirmation is mandatory, never implied.** Before any `fable` spawn, ask the user explicitly — name the task, say why this is long-horizon work `opus` should not own (or why a `max`-effort `opus` pass was insufficient), and state the cost difference. Proceed only on their yes. Prior approval of one `fable` spawn never carries to the next.
 
 Routine upgrades within the band (`haiku`→`sonnet`, `sonnet`→`opus`) need **no** confirmation — the escalation tests are the control; asking would nag on every spawn.
