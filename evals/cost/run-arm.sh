@@ -24,7 +24,7 @@ mkdir -p "$out_dir"
 case "$model" in
   haiku)  model_id="claude-haiku-4-5" ;;
   sonnet) model_id="claude-sonnet-5" ;;
-  opus)   model_id="claude-opus-4-8" ;;
+  opus)   model_id="claude-opus-5" ;;
   fable)  model_id="claude-fable-5" ;;
   *) echo "unknown model $model" >&2; exit 2 ;;
 esac

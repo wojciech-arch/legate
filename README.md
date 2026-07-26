@@ -282,6 +282,8 @@ The first round's scorecard is in `evals/results/`. Honest summary: the discipli
 
 All figures are the CLI's own `total_cost_usd` from real `claude -p` sessions, CEO on `opus`, against small fixtures — **read the percentage, not the dollars.**
 
+> **Provenance:** measured on `claude-opus-4-8`, which was what the `opus` band resolved to on 2026-07-23. The `opus` alias now tracks **Opus 5**. Because Legate names tiers by alias rather than by model ID, the plugin needed no change — but these specific dollar figures are Opus 4.8's and have **not** been re-measured on Opus 5. The _shape_ of the result (premium CEO offloading bulk reads to `haiku`) is what carries over; re-run `evals/cost/` to refresh the numbers.
+
 **Legate as it auto-triggers (headless one-shot):**
 
 | Task                        | Baseline (no Legate) | Legate on | Δ          | Delegated?                     |

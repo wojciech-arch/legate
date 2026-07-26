@@ -1,6 +1,7 @@
 {
   "_comment": "Per-1M-token USD prices. Single source for cost.mjs / aggregate.mjs. Mirror of skills/delegate/references/tiers.md tier bands — keep in sync when Anthropic reprices. 'in'=input, 'out'=output. Cache prices are ratios of that model's input price and are the same ratios for every model: read = 0.1x input, write(1h) = 2.0x input. Verified against `claude -p --output-format json` total_cost_usd on 2026-07-23.",
   "_updated": "2026-07-23",
+  "_stale_warning": "The 'opus' row is Opus 4.8 pricing ($5/$25), verified against the CLI on 2026-07-23. The 'opus' alias now resolves to Opus 5 — CONFIRM Opus 5's published rate before trusting any 'opus' figure computed here. Same check applies to 'fable' if the top of the band moved.",
   "cache_read_mult": 0.1,
   "cache_write_mult": 2.0,
   "models": {

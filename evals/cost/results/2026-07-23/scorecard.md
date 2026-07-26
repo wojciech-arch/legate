@@ -6,6 +6,11 @@ per-model `modelUsage`. Baseline = legate **disabled**; legate arm = legate **en
 (superpowers constant in both, so only Legate varies). Fixtures are small — read the
 **percentage**, not the dollars.
 
+> **Model provenance:** the `opus` arms ran on **`claude-opus-4-8`**, what the `opus`
+> band resolved to on this date; `sonnet`→`claude-sonnet-5`, `haiku`→`claude-haiku-4-5`.
+> Opus 5 has since shipped and the `opus` alias now points at it. These dollar figures
+> are **not** Opus 5 numbers. Re-run before quoting them as current.
+
 ## Headline
 
 Legate's cost effect is **entirely determined by whether the model actually delegates.**
