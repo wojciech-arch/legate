@@ -89,6 +89,10 @@ Allowed when stakes are low AND the diff is small (non-user-facing, single file)
 - An `opus` architect/verifier pass already ran and was **inconclusive or contradicted itself**, and the decision is expensive to reverse (system-wide architecture, data migration, public API commitment).
 - The analysis genuinely needs very-long-horizon reasoning across a large surface that `opus` failed to hold together.
 
+**Raise effort before you raise tier.** `opus` supports `effort` up to `max`; a harder-thinking `opus` pass is a real rung on the ladder and costs the same per token as a normal one. An `opus` run at default effort that came back thin is **not** evidence that `opus` is insufficient — it is evidence you have not tried `opus` properly yet. Exhaust that rung first; only a `max`-effort `opus` pass that still fails is grounds to ask for `fable`.
+
+**Check recency before escalating.** `fable`'s knowledge cutoff is _older_ than `opus`'s (Jan 2026 vs May 2026). For anything turning on recent APIs, releases, or ecosystem facts, `fable` is the **worse** choice despite costing twice as much. Escalate for reasoning depth, never for freshness.
+
 **Confirmation is mandatory, never implied.** Before a `fable` spawn, ask the user explicitly — name the task, why `opus` was insufficient, and the cost difference — and proceed only on their yes. Prior approval of one `fable` spawn does not carry over to the next.
 
 Routine upgrades within the band (`haiku`→`sonnet`, `sonnet`→`opus`) need **no** confirmation — the escalation tests are the control; asking would nag on every spawn.
