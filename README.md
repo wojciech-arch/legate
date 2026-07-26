@@ -276,33 +276,35 @@ legate/
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 
-`evals/cost/` is that harness applied to the money question: real `claude -p` A/B runs (Legate on vs off), scored on the CLI's own per-model `total_cost_usd`. The first round is blunt. Measured on `opus`, the cost gate's delegation did **not** fire in headless one-shot mode, so Legate ran **4–14% more expensive** across three tasks (a trivial lookup, a 20-file version bump, a 25-file survey). Measured _directly_, the delegation pattern it is supposed to produce — haiku explorers reading the files, `opus` synthesizing — is **28% cheaper** on the read-heavy survey (**44% projected on `fable`**). The savings are real but gated on delegation actually triggering; `evals/cost/results/` has the numbers and `cost.mjs` reprices them for any tier.
+`evals/cost/` is that harness applied to the money question: real `claude -p` A/B runs (Legate on vs off), scored on the CLI's own per-model `total_cost_usd`. The results are blunt. Measured on `opus`, the cost gate's delegation did **not** fire in headless one-shot mode, so Legate ran **0–11% more expensive** across three tasks (a trivial lookup, a 20-file version bump, a 25-file survey). Measured _directly_, the delegation pattern it is supposed to produce — haiku explorers reading the files, `opus` synthesizing — is **32% cheaper** on the read-heavy survey (**48% projected on `fable`**). The savings are real but gated on delegation actually triggering; `evals/cost/results/` has both rounds (Opus 4.8 and Opus 5) and `cost.mjs` reprices them for any tier.
 
-### Measured numbers (2026-07-23)
+### Measured numbers (2026-07-26, Opus 5)
 
-All figures are the CLI's own `total_cost_usd` from real `claude -p` sessions, CEO on `opus`, against small fixtures — **read the percentage, not the dollars.**
-
-> **Provenance:** measured on `claude-opus-4-8`, which was what the `opus` band resolved to on 2026-07-23. The `opus` alias now tracks **Opus 5**. Because Legate names tiers by alias rather than by model ID, the plugin needed no change — and Opus 5 ships at the **same $5/$25 as Opus 4.8**, so the price ratios these percentages rest on are unchanged. What may shift is token _behaviour_ (Opus 5 runs adaptive thinking by default and writes longer), so read the dollar figures as Opus 4.8 measurements and the percentages as still-representative. Re-run `evals/cost/` to refresh.
+All figures are the CLI's own `total_cost_usd` from real `claude -p` sessions, CEO on `opus` (= `claude-opus-5`), `haiku` legs on `claude-haiku-4-5`, against small fixtures — **read the percentage, not the dollars.**
 
 **Legate as it auto-triggers (headless one-shot):**
 
 | Task                        | Baseline (no Legate) | Legate on | Δ          | Delegated?                     |
 | --------------------------- | -------------------- | --------- | ---------- | ------------------------------ |
-| trivial-lookup (1 file)     | $0.3024              | $0.3210   | **+6.1%**  | no — correct (below threshold) |
-| bulk-edit (20 files)        | $0.4646              | $0.4841   | **+4.2%**  | no — correct (`sed`-able)      |
-| wide-read-survey (25 files) | $0.8967              | $1.0195   | **+13.7%** | no — **missed**                |
+| trivial-lookup (1 file)     | $0.3025              | $0.3194   | **+5.6%**  | no — correct (below threshold) |
+| bulk-edit (20 files)        | $0.4672              | $0.5201   | **+11.3%** | no — correct (`sed`-able)      |
+| wide-read-survey (25 files) | $1.0193              | $1.0199   | **+0.06%** | no — **missed**                |
 
-Auto-triggered, Legate was **4–14% dearer** on every task: the router injects but the model kept doing the work itself. Two of the three non-delegations were the right call; the survey was a genuine miss.
+Auto-triggered, Legate never delegated: every arm's `modelUsage` holds exactly one model. Two of the three non-delegations were the right call; the survey was a genuine miss. The tax ranges from negligible (read-heavy) to material (**+11.3%** on scriptable bulk, where routing deliberation buys nothing).
 
 **The delegation pattern, measured directly (survey, `opus`):**
 
 | Strategy                                                | Cost        |
 | ------------------------------------------------------- | ----------- |
-| Baseline — `opus` does the whole survey                 | $0.8967     |
-| Legate pattern — 3 `haiku` explorers + `opus` synthesis | **$0.6450** |
-| **Saving**                                              | **−28.1%**  |
+| Baseline — `opus` does the whole survey                 | $1.0193     |
+| Legate pattern — 3 `haiku` explorers + `opus` synthesis | **$0.6912** |
+| **Saving**                                              | **−32.2%**  |
 
-**Projected to a `fable` CEO** (re-priced from the same measured tokens; `fable` is 2× `opus`): baseline $1.7934 → delegation pattern $0.9941 = **−44.6%**.
+Tokens move the opposite way — 6,507 → 9,335 (**+2,828 tokens for −$0.33**), which is the whole thesis in one line: Legate trades tokens for price tier.
+
+**Projected to a `fable` CEO** (re-priced from the same measured tokens; `fable` is 2× `opus`): baseline $2.0385 → delegation pattern $1.0664 = **−47.7%**.
+
+**Opus 4.8 → Opus 5.** Pricing is identical ($5/$25), so every shift below is behavioural. Delegation's payoff **improved** (−28.1% → −32.2%) because Opus 5 grinds harder on open-ended reads — the survey baseline went from 9 turns to 20, inflating exactly the cost delegation removes. The read-heavy tax fell from +13.7% to +0.06%, though for an unflattering reason: the baseline rose to meet the Legate arm rather than the Legate arm improving. The scriptable-bulk tax got **worse** (+4.2% → +11.3%). And delegation failed to auto-fire on _both_ generations — two independent models behaving identically is evidence this is a router-design property, not a model quirk. Full comparison in `evals/cost/results/2026-07-26-opus5/`.
 
 The takeaway in one line: on the _same_ task, the cost is $0.645 if it delegates and $1.020 if it doesn't — a **37% swing that is entirely "did delegation fire."** Legate's economics are favorable on read-heavy work; its bottleneck is triggering, not the trade.
 
