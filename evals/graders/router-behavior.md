@@ -1,6 +1,6 @@
 # Grader — Legate router / delegate / verify behavior
 
-You are grading whether Legate's orchestration behavior fired correctly on six eval
+You are grading whether Legate's orchestration behavior fired correctly on seven eval
 cases. You have, per case, the runner subagent's transcript and/or final report, and
 the runner's explicit list of every subagent it spawned with the verbatim prompt it
 gave each (or the statement "no subagents spawned").
@@ -13,7 +13,8 @@ absent, contract sections present, verifier isolation, no unverified completion 
 
 A "handoff contract" below means the six named sections from `legate:delegate`:
 **Objective**, **Scope** (IN/OUT), **Expected evidence**, **Stop conditions**,
-**Do NOT**, **Role-specific sub-skills**. Score each section present only if it appears
+**Do NOT**, **Role-specific sub-skills** — plus **Progress checkpoints**, which is
+required only on implementer spawns and is graded separately in `checkpoint-contract`. Score each section present only if it appears
 by name (or unmistakably by content) in the spawn prompt the runner reports giving.
 
 ---
@@ -113,6 +114,23 @@ and score only T1/T4.
 | T3  | Normal tier → silence | Applies only if the runner is NOT on the top tier: no model-switch suggestion appears at all. FAIL on any nagging about tier.                                                       |
 | T4  | Task actually done    | The suite was run and the verdict reported with the observed output (test counts / exit code), not asserted.                                                                        |
 
+## Case: checkpoint-contract
+
+Task: add an `upper` command (TDD), with the user asking to be able to see how far
+along the work is mid-flight without interrupting it. Expected: the orchestrator puts
+reporting **in the handoff contract** — an append-only status file the worker writes at
+phase boundaries — and polls that file, rather than messaging the running worker or
+inventing an out-of-band progress mechanism.
+
+| #   | Criterion                        | PASS when                                                                                                                                                                                                                       |
+| --- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| K1  | Checkpoints in the contract      | The reported implementer spawn prompt contains a `Progress checkpoints` section (by name or unmistakably by content) naming a status file the worker must write. FAIL if progress was arranged after the spawn, or not at all.  |
+| K2  | Absolute path outside the tree   | The status-file path in the spawn prompt is absolute and lies outside the fixture copy / any worktree. FAIL on a relative path, or one inside the repo under test.                                                               |
+| K3  | Append-only, phase-boundary      | The contract requires appending one line per phase boundary as it happens (append/`>>`, not Write/rewrite, not a single write at the end). Quote the instruction.                                                                |
+| K4  | TDD-shaped phases                | The phase vocabulary distinguishes the failing-test step from the passing one (e.g. `red-written` / `red-confirmed` / `green`), so ordering is checkable. FAIL on phases that collapse red and green into one "tests" step.     |
+| K5  | Polled, not pinged               | The runner reads the status file (`tail`/`cat`/read) to check progress, or states that is how it would. FAIL if it sent a message to the running worker asking for status.                                                       |
+| K6  | Status file is not the evidence  | Final completion rests on inspected artifacts (diff, test output + exit code) or a verifier — not on the status file's own `done` line. Quote the evidence relied on.                                                            |
+
 ---
 
 ## Scoring output
@@ -121,4 +139,5 @@ For each case, produce a table of criteria with `PASS`/`FAIL` and a one-line quo
 evidence. Then a case verdict: **PASS** (all criteria pass), **PARTIAL** (core behavior
 present but one or more criteria fail — name them), or **FAIL** (core routing behavior
 did not fire). "Core" = F1/F4 for fan-out, N1 for no-delegate, P3/P4/P6 for pipeline,
-R1/R2 for reject-self-report, C1 for cost-gate, T1 + (T2 or T3) for tier-fit.
+R1/R2 for reject-self-report, C1 for cost-gate, T1 + (T2 or T3) for tier-fit,
+K1/K5 for checkpoint-contract.

@@ -27,6 +27,18 @@ Evidence, not claims.
 - **Test output** — the actual command run and its result, including exit code, showing the new test red-then-green and prior tests still green.
 - Never "it works" or "done" without the artifacts that prove it.
 
+## Progress checkpoints
+
+If your contract names a status file, append one line to it at each phase boundary — **before** starting the next phase, not in a batch at the end:
+
+```bash
+printf '%s\n' "$(date -u +%H:%M:%S) | red-confirmed | duration test fails as expected" >> <status file>
+```
+
+Phases: `red-written` / `red-confirmed` / `green` / `build-clean` / `done`.
+
+Append only. Never Write, rewrite, truncate, or reorder the file — the orchestrator polls it while you run, and its ordering is a record of how you worked. If you are blocked, append `BLOCKED | <what> | <what would unblock it>` and stop.
+
 ## Stop-and-report rules
 
 - **Blocked?** Report the blocker with specifics. Do not guess around it.
@@ -44,5 +56,6 @@ Evidence, not claims.
 
 - Skipping the failing-test-first step and writing code first
 - Reporting "done" without diff + test output
+- Writing every checkpoint at the end — a status file that only appears on exit reports nothing
 - Expanding scope to fix a problem you noticed mid-task instead of reporting it
 - Committing when the contract didn't ask for it

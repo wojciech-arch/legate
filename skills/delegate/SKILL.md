@@ -17,7 +17,7 @@ Delegation has two motives, and both produce the same contract: **capability** (
 
 ## The Handoff Contract
 
-Every spawn prompt MUST contain these six sections, by name. Fill in every one — an empty section means you haven't scoped the task yet.
+Every spawn prompt MUST contain these sections, by name. Fill in every one — an empty section means you haven't scoped the task yet. Six are unconditional; **Progress checkpoints** is required for implementers, optional for explorer/architect, and omitted entirely for verifiers (see the checkpoint table below).
 
 ```markdown
 ## Objective
@@ -35,6 +35,17 @@ OUT: <what is explicitly off-limits — adjacent files, other packages, refactor
 failing-then-passing test output, command + exit code. Never "a report that
 it works" — name the concrete proof.>
 
+## Progress checkpoints
+
+Append one line to <ABSOLUTE PATH TO STATUS FILE> at each phase boundary,
+before starting the next phase. Append only — `printf '%s\n' "..." >> <file>`.
+Never Write or rewrite the file.
+
+  `<HH:MM:SS> | <phase> | <one-line state>`
+
+Phases: <role phase list — see role table>
+If blocked: append `BLOCKED | <what> | <what would unblock it>`, then stop.
+
 ## Stop conditions
 
 - Done when: <observable completion state>
@@ -50,6 +61,7 @@ it works" — name the concrete proof.>
 - Touch anything under Scope/OUT
 - Refactor, rename, or "clean up" beyond the objective
 - Expand scope to a problem you discover mid-task — report it instead
+- Rewrite, truncate, or reorder the status file — append only
 
 ## Role-specific sub-skills
 
@@ -74,6 +86,26 @@ See `references/tiers.md` for role → model → cost. See `references/examples.
 Any implementer contract MUST include this line verbatim in **Role-specific sub-skills**:
 
 > **REQUIRED SUB-SKILL:** Follow superpowers:test-driven-development for every feature or bugfix — write the failing test first, watch it fail, then implement.
+
+## Progress checkpoints — pollable, not conversational
+
+A transactional worker is silent until it exits. That is not a reason to message it mid-flight (see the lifecycle rules below); it is a reason to put reporting **in the contract**. The worker appends its own phase boundaries to a file; you `tail` that file whenever you want to know how far it got. No interrupt, no context cost while it stays quiet, and the trail survives a worker that crashes or is killed.
+
+| Role        | Checkpoints              | Phases                                                   |
+| ----------- | ------------------------ | -------------------------------------------------------- |
+| implementer | **required**             | red-written / red-confirmed / green / build-clean / done |
+| explorer    | optional — long fan-outs | scoped / searched / synthesized                          |
+| architect   | optional — long reads    | read / assessed                                          |
+| verifier    | **never**                | one-shot and side-effect-free by design                  |
+
+Rules for the orchestrator writing the contract:
+
+- **Give an absolute path.** The worker inherits no context and cannot guess your scratch dir.
+- **Put it outside the repo and outside any worktree.** A status file inside the tree dirties it — a `worktree`-isolated spawn stops auto-cleaning, and the file can end up committed. Use the session scratchpad.
+- **One file per worker** (`status-<label>.md`). Parallel workers appending to one file interleave into nonsense.
+- **Poll with `tail`,** never with a message to the worker.
+
+The file is the worker's own account of itself, so it is a claim — see legate:verify for the one thing it is admissible for.
 
 ## Propose the goal BEFORE implementation starts
 
@@ -125,5 +157,7 @@ Worker results come back to you, the orchestrator, for synthesis — you own the
 - Expected evidence is prose ("tell me it works") not artifacts
 - No stop condition — worker could loop or wander indefinitely
 - Implementer spawn with no TDD sub-skill line
+- Implementer spawn with no checkpoint path, or a path inside the repo/worktree
+- About to message a running worker to ask how far it got — `tail` its status file
 - Multi-step effort under way and no goal proposal was printed
 - Parallel spawns that touch the same files

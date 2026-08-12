@@ -125,7 +125,7 @@ Model aliases appear in exactly two places: `skills/delegate/references/tiers.md
 
 ## The handoff contract
 
-A delegated agent inherits none of your context. The spawn prompt _is_ the task. Legate requires six named sections — an empty one means the task isn't scoped yet:
+A delegated agent inherits none of your context. The spawn prompt _is_ the task. Legate requires six named sections, plus **Progress checkpoints** for any worker whose progress is worth watching — an empty one means the task isn't scoped yet:
 
 ```markdown
 ## Objective
@@ -141,6 +141,11 @@ OUT: what is explicitly off-limits
 
 Concrete artifacts: file:line refs, diff summary, failing-then-passing
 test output, command + exit code. Never "a report that it works".
+
+## Progress checkpoints
+
+Append one line per phase boundary to <absolute path>, append-only:
+`<HH:MM:SS> | <phase> | <one-line state>`. Required for implementers.
 
 ## Stop conditions
 
@@ -181,6 +186,25 @@ Goal proposal (paste to arm Claude Code's completion guard):
 ```
 
 [`/goal`](https://code.claude.com/docs/en/goal) has no programmatic API and subagents never see it — Legate proposes, never assumes, and never blocks on it.
+
+---
+
+## Progress checkpoints
+
+A transactional worker is silent until it exits, so "how far did it get?" has no answer mid-flight. Messaging the worker to ask is the wrong fix — it lands in an agent already committed to a reading of the task. Legate puts reporting in the **contract** instead: the worker appends its own phase boundaries to a file, and the orchestrator polls with `tail`.
+
+| Role            | Checkpoints              | Phases                                                   |
+| --------------- | ------------------------ | -------------------------------------------------------- |
+| **implementer** | required                 | red-written / red-confirmed / green / build-clean / done |
+| **explorer**    | optional — long fan-outs | scoped / searched / synthesized                          |
+| **architect**   | optional — long reads    | read / assessed                                          |
+| **verifier**    | never                    | one-shot and side-effect-free by design                  |
+
+Pull, not push: no interrupt, no context cost while the worker is quiet, and the trail outlives a worker that crashes or is killed. The path must be absolute and **outside the repo and any worktree** — a status file inside the tree dirties it, so a `worktree`-isolated spawn stops auto-cleaning and the file can end up committed. One file per worker; parallel appends to a shared file interleave.
+
+The file is the worker's own account of itself, so it is a claim, not evidence — `done` in a status file is exactly as unverified as `done` in a chat report. It is admissible for one thing: **ordering**. A `green` stamped before `red-confirmed`, or a missing `red-confirmed`, means the failing test was never seen to fail — a FAIL signal the final diff cannot give you, since it looks identical either way.
+
+Blocked workers still surface only on poll or exit; a push channel for blockers is deliberately left to a later cut rather than guessed at.
 
 ---
 
@@ -267,12 +291,12 @@ legate/
 │   └── verify/SKILL.md             # verification protocol
 ├── agents/                         # explorer, implementer, architect, verifier
 ├── hooks/                          # SessionStart injection (zero-dependency bash)
-└── evals/                          # 4 behavioral cases + grader + fixture
+└── evals/                          # 7 behavioral cases + grader + fixture
 ```
 
 ## Evals
 
-`evals/` holds six behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, and tier fit on small tasks (which grades the _absence_ of nagging as strictly as its presence) — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
+`evals/` holds seven behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, tier fit on small tasks (which grades the _absence_ of nagging as strictly as its presence), and progress checkpoints written into the contract rather than asked for mid-flight — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 

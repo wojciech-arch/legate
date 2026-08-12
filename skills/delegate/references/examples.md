@@ -46,6 +46,10 @@ None. State explicitly at the end what you did NOT search.
 
 Explorers B and C get the same shape scoped to `packages/web` and `packages/shared`. Orchestrator synthesizes the three results into one map.
 
+_No `## Progress checkpoints` section: these explorer spawns are short single-pass
+reads. Add one when a fan-out is long enough that "how far did it get" is a real
+question._
+
 ---
 
 ## Example 2 — Implementer task
@@ -66,6 +70,16 @@ OUT: every other file. Do not change the public signature, callers, or exports.
 - Diff summary of duration.ts (the parsing change only).
 - Full output of `yarn test duration` showing the new test and prior tests green,
   with the exit code.
+
+## Progress checkpoints
+
+Append one line to /tmp/claude-scratch/status-duration-fix.md at each phase
+boundary, before starting the next phase. Append only —
+`printf '%s\n' "$(date -u +%H:%M:%S) | green | duration.ts fix applied" >> <file>`.
+Never Write or rewrite the file.
+
+Phases: red-written / red-confirmed / green / build-clean / done
+If blocked: append `BLOCKED | <what> | <what would unblock it>`, then stop.
 
 ## Stop conditions
 
@@ -92,6 +106,9 @@ failing test first, watch it fail, then implement the minimal fix.
 ---
 
 ## Example 3 — Verifier spawn
+
+_Verifier contracts never carry `## Progress checkpoints` — the role is one-shot and
+side-effect-free by design._
 
 Gets the **original spec and acceptance criteria only** — never the implementer's narrative, so it cannot anchor on the implementer's account.
 

@@ -60,6 +60,14 @@ Sometimes a verifier spawn isn't possible (no Agent tool in this context, or the
 
 This fallback is acceptable. Skipping verification because a spawn wasn't available is not.
 
+## Status files are claims, not evidence
+
+A worker's progress checkpoints (legate:delegate) are the worker's own account of itself, written by the worker, in a file. The Iron Rule is unchanged: a status file **never** grants a PASS, and `done` in a status file is exactly as unverified as `done` in a chat report.
+
+It is admissible for one thing: **ordering**. `green` stamped before `red-confirmed` — or a `red-confirmed` line that never appears at all — means the failing test was never seen to fail. That is a FAIL signal on the TDD criterion, and it is one you cannot get from the final diff, which looks identical either way.
+
+Use it to catch a fake, never to skip a check.
+
 ## Failures route as new work
 
 A failed criterion does NOT go back as "please fix the above." It becomes a **new, bounded implementer handoff** (legate:delegate) scoped to exactly that gap, with its own contract. A "continue and fix" prompt reopens the whole fuzzy scope; a fresh bounded handoff keeps the fix auditable.
@@ -75,6 +83,7 @@ Then verify again. Re-verification is not optional because "it was a small fix."
 - Giving the verifier the implementer's summary (anchoring it)
 - Re-running a failed task as "keep going" instead of a fresh bounded handoff
 - "It probably works" / "should be fine" about someone else's output
+- Treating a status file's `done` line as evidence — it is the same claim, relocated
 
 **All of these mean: inspect the evidence or spawn a verifier. No exceptions.**
 
