@@ -2,7 +2,7 @@
 
 **An orchestration layer for Claude Code that decides when to delegate, to whom, and refuses to accept "done" without evidence.**
 
-Claude Code can spawn subagents. It has no opinion about _when_ that's worth doing, what a good handoff looks like, or whether a worker's completion claim should be believed. Legate supplies those opinions in ~423 tokens of always-on context.
+Claude Code can spawn subagents. It has no opinion about _when_ that's worth doing, what a good handoff looks like, or whether a worker's completion claim should be believed. Legate supplies those opinions in ~470 tokens of always-on context.
 
 It is deliberately small. Methodology — planning, TDD, debugging, code review — comes from [superpowers](https://github.com/obra/superpowers), which Legate depends on and references by name rather than restating.
 
@@ -20,6 +20,7 @@ Four failure modes show up constantly in agentic coding sessions:
 | **Over-delegation**                | A subagent is spawned to run one `grep`; synthesis overhead exceeds the work                                         | "Delegating a grep is a bug" — an explicit NO branch with anti-rationalization table                                                                 |
 | **Trusted self-reports**           | Worker says "all tests pass, task complete." It isn't, and nobody checked                                            | Iron rule: a completion claim is never evidence. Inspect the diff or spawn a fresh-context verifier                                                  |
 | **Frontier tier doing grunt work** | A premium session reads 40 files into its own context, or generates 40 bespoke ones, when a cheap worker would do it | Cost gate: high-premium-token bulk (reads, generation) is delegated **down**. Scriptable edits stay inline — measured, delegating a `sed` costs more |
+| **Unpartitioned fan-out**          | Three "independent" workers dispatched at once, all editing the same file, silently clobbering each other                | `legate:split` partitions first: `OWNS` per item, disjointness tested, shared seams landed before the wave. `Scope OUT` is derived, not invented                     |
 
 The last one runs both ways: workers get the cheapest model that can do the job, and the orchestrator checks its _own_ tier before working inline. What triggers a down-delegation is **premium-token volume** — bulk reads or bespoke generation — not file count; scriptable edits (a `sed` over 400 files) are near-free inline and stay there. A **small** task on the top tier also stays inline, earning a one-time aside that a cheaper model would cover it; on any normal tier small work proceeds in silence — a warning that fires constantly is one nobody reads. Every role is a **tier band** with a written escalation test, and no expensive model is chosen by accident.
 
@@ -34,12 +35,15 @@ flowchart TD
     A[User request] --> R{Router<br/>always loaded, ~90 tok}
 
     R -->|"single file, sequential edit,<br/>trivial lookup"| SELF[Do it yourself<br/>no spawn]
-    R -->|"≥3 independent items,<br/>context-heavy read,<br/>independent judgment,<br/>bounded implementation"| D[legate:delegate<br/>loads on demand]
+    R -->|"≥3 independent items,<br/>context-heavy read,<br/>independent judgment,<br/>bounded implementation"| SP{"≥2 concurrent<br/>workers?"}
+    SP -->|yes| SPL["legate:split<br/>partition: OWNS · READS · deps<br/>seam-first, disjointness tested"]
+    SP -->|no| D[legate:delegate<br/>loads on demand]
+    SPL --> D
     R -->|"bulk reads or generation<br/>on a premium tier"| COST[Delegate DOWN for cost<br/>or state the price first]
     SELF -.->|"top tier only,<br/>once per session"| TIP["Aside: a cheaper model<br/>would cover this"]
     COST --> D
 
-    D --> C[Write handoff contract<br/>Objective · Scope IN/OUT · Evidence<br/>Stop conditions · Do NOT · Sub-skills]
+    D --> C[Write handoff contract<br/>Objective · Scope IN/OWNS/OUT · Evidence<br/>Stop conditions · Do NOT · Sub-skills]
     C --> G["Print goal proposal<br/>multi-step efforts only"]
     G --> ROLE{Pick role + tier}
 
@@ -63,6 +67,8 @@ flowchart TD
     NEW --> C
 
     style R fill:#4a5568,color:#fff
+    style SP fill:#4a5568,color:#fff
+    style SPL fill:#2c5282,color:#fff
     style V fill:#4a5568,color:#fff
     style COST fill:#744210,color:#fff
     style TIP fill:#744210,color:#fff
@@ -76,20 +82,21 @@ The whole design goal is that Legate costs almost nothing until it's needed. Cla
 
 ```mermaid
 flowchart LR
-    subgraph always ["Always loaded — ~423 tokens"]
+    subgraph always ["Always loaded — ~470 tokens"]
         RT["Router body<br/>(SessionStart hook)"]
-        FM["7 frontmatter descriptions<br/>3 skills + 4 agents"]
+        FM["8 frontmatter descriptions<br/>4 skills + 4 agents"]
     end
 
     subgraph lazy ["On invocation only"]
-        DEL["delegate<br/>~1.4k"]
+        DEL["delegate<br/>~2.8k"]
+        SPT["split<br/>~1.5k"]
         VFY["verify<br/>~1.3k"]
         AGT["agent prompts<br/>~530-690 each"]
     end
 
     subgraph deeper ["Progressive disclosure"]
         TIERS["references/tiers.md<br/>escalation tests"]
-        EX2["references/examples.md<br/>3 filled contracts"]
+        EX2["references/examples.md<br/>4 filled contracts"]
     end
 
     always -.->|"router points at"| lazy
@@ -123,6 +130,106 @@ Model aliases appear in exactly two places: `skills/delegate/references/tiers.md
 
 ---
 
+## Splitting the work
+
+The router *counts* independent items. Nothing in Claude Code or superpowers *produces*
+them: `writing-plans` decomposes for ordering — one worker walking steps — and
+`dispatching-parallel-agents` starts from a list that already exists. Cutting an
+unenumerated task into concurrently dispatchable work is dispatch, so Legate owns it.
+
+`legate:split` runs after the router says delegate and before the first of two or more
+concurrent contracts. Four moves:
+
+1. **Enumerate outcomes** — if you can't list them, the extent is unknown: explorer first.
+2. **Assign writes** — every item gets `OWNS` globs.
+3. **Test disjointness** — pairwise `OWNS ∩ OWNS = ∅`. `READS` may overlap freely.
+4. **Draw dependency edges** — a consumer of another item's output isn't in its wave.
+
+Output is one table, and each row becomes one contract:
+
+| id | Objective | OWNS | READS | depends on | role |
+| --- | --------- | ---- | ----- | ---------- | ---- |
+
+`Scope OUT` is then the union of the other concurrent rows' `OWNS` — **derived, never
+written from memory.** That is the whole point: without a partition, the no-clobber
+guarantee is a hope.
+
+```mermaid
+flowchart LR
+    T["partition table<br/>id · OWNS · READS · deps"]
+
+    T -->|"one row"| C1["contract S1<br/><b>OWNS</b> routes/invite.ts"]
+    T -->|"one row"| C2["contract S2<br/><b>OWNS</b> routes/login.ts"]
+
+    C2 -.->|"its OWNS becomes"| O1["S1 · <b>Scope OUT</b><br/>routes/login.ts"]
+    C1 -.->|"its OWNS becomes"| O2["S2 · <b>Scope OUT</b><br/>routes/invite.ts"]
+
+    O1 --- C1
+    O2 --- C2
+
+    style T fill:#2c5282,color:#fff
+    style O1 fill:#22543d,color:#fff
+    style O2 fill:#22543d,color:#fff
+```
+
+Two contracts cannot both claim a file, because neither `OUT` was written by hand.
+
+### Residue
+
+Real work rarely cuts clean, and the residue is where the skill earns its place:
+
+| Shape | Move |
+| ----- | ---- |
+| **Shared seam** — items all touch one interface / middleware / schema | **Seam-first.** Cut it as item 0, land and verify it, *then* fan out |
+| **Shared file, no seam** | Sequence, or one item owns it and siblings report the change they need |
+| **Unknown extent** | Explorer first. Never split a repo you haven't read |
+| **N files, one transform** | Not N items — a `sed`-able bulk edit stays inline (cost gate) |
+
+The shared seam is the one that actually bites, because the items *look* independent.
+Three new CLI commands are three separate outcomes — and three separate workers all
+editing the one `switch` that dispatches them:
+
+```mermaid
+flowchart TB
+    subgraph naive ["✗ Naive cut — one worker per outcome"]
+        direction TB
+        N1["worker: upper"] --> NX[("src/index.js")]
+        N2["worker: reverse"] --> NX
+        N3["worker: count"] --> NX
+        NX --> CLOB["last writer wins<br/>two edits silently lost"]
+    end
+
+    subgraph seam ["✓ Seam-first"]
+        direction TB
+        S0["item 0 — the seam<br/><b>OWNS</b> src/index.js<br/>registry + shared arg check"] --> VZ{{"verify before fan-out"}}
+        VZ --> W1["upper<br/><b>OWNS</b> commands/upper.js"]
+        VZ --> W2["reverse<br/><b>OWNS</b> commands/reverse.js"]
+        VZ --> W3["count<br/><b>OWNS</b> commands/count.js"]
+        W1 --> RD["disjoint writes<br/>wave runs concurrently"]
+        W2 --> RD
+        W3 --> RD
+    end
+
+    style CLOB fill:#742a2a,color:#fff
+    style NX fill:#744210,color:#fff
+    style S0 fill:#2c5282,color:#fff
+    style VZ fill:#4a5568,color:#fff
+    style RD fill:#22543d,color:#fff
+```
+
+The seam is sequential and cheap; skipping it is what turns "three independent items"
+into three workers fighting over one file.
+
+### Width is a verification budget
+
+Every item costs a contract *and* a verification pass, and `legate:verify` puts a full
+verifier spawn on anything feature-sized, multi-file, or user-facing. N items is ~2N
+spawns plus a synthesis one context has to hold. Cap the wave at what you can verify in
+one pass; batch the rest behind it. Width that doesn't shorten the critical path bought
+nothing — four siblings don't make the 80% item finish sooner.
+
+---
+
 ## The handoff contract
 
 A delegated agent inherits none of your context. The spawn prompt _is_ the task. Legate requires six named sections, plus **Progress checkpoints** for any worker whose progress is worth watching — an empty one means the task isn't scoped yet:
@@ -134,8 +241,9 @@ One sentence, outcome-shaped. "Make X true", not "look into X".
 
 ## Scope
 
-IN: exact paths / repos / globs the worker may touch
-OUT: what is explicitly off-limits
+IN: exact paths / repos / globs the worker may read
+OWNS: write globs — disjoint from every concurrent item (from legate:split)
+OUT: union of the other concurrent items' OWNS, plus anything else off-limits
 
 ## Expected evidence
 
@@ -164,7 +272,7 @@ expand into problems discovered mid-task.
 REQUIRED SUB-SKILL: superpowers:test-driven-development (implementer spawns)
 ```
 
-### One sentence, three consumers
+### One sentence, up to four consumers
 
 The **Completion condition** line is the contract's keystone:
 
@@ -173,9 +281,11 @@ flowchart LR
     CC["Completion condition<br/><i>npm test exits 0 and<br/>mini version prints the<br/>package.json version</i>"]
     CC --> W["Worker<br/>stop condition"]
     CC --> V["Verifier<br/>primary criterion,<br/>tested verbatim"]
-    CC --> G["/goal<br/>completion guard<br/>(user pastes)"]
+    CC --> G["/goal<br/>completion guard<br/>user pastes"]
+    CC -.->|"only if unlazy<br/>is installed"| GT["Gate<br/>CHECK: + EXPECT:<br/>runnable oracle"]
 
     style CC fill:#2c5282,color:#fff
+    style GT fill:#4a5568,color:#fff
 ```
 
 Before the first implementer spawn of a multi-step effort, Legate prints a ready-to-paste proposal:
@@ -220,6 +330,36 @@ The verifier receives **only** the spec, acceptance criteria, completion conditi
 
 Failures do not go back as "please fix the above." Each becomes a **new bounded handoff** scoped to exactly that gap, then gets re-verified. When no spawn is available, a documented clean-room fallback applies: re-derive checks from the spec alone and label the result "verified same-context."
 
+### Gate-backed verification (optional)
+
+If [`unlazy`](https://github.com/Leonxlnx/unlazy) is installed, the **Completion condition** can travel as a runnable gate instead of a prose sentence, and the verifier measures it — `--status` to read the oracle without executing it, then `--reverify` to re-run it. Legate detects the skill and degrades silently to prose verification when it is absent; tier 1 is the baseline, not a fallback.
+
+```mermaid
+flowchart TD
+    CL["Worker returns 'done'"] --> T{"contract names a gate<br/>and unlazy is installed?"}
+
+    T -->|no · tier 1| P1["read the diff<br/>run the named command"]
+    T -->|yes · tier 2| G1["--status<br/><b>non-executing</b><br/>read every CHECK:"]
+
+    G1 --> J{"does the command<br/>measure the title?"}
+    J -->|"cannot fail —<br/>always exits 0 ·<br/>EXPECT matches anything ·<br/>figure copied from spec"| F["FAIL this criterion<br/><b>green is irrelevant</b>"]
+    J -->|yes| G2["--reverify<br/>re-execute from scratch"]
+
+    P1 --> V["PASS / FAIL per criterion<br/>+ evidence pointer"]
+    G2 --> V
+    F --> V
+
+    style T fill:#4a5568,color:#fff
+    style J fill:#4a5568,color:#fff
+    style G1 fill:#2c5282,color:#fff
+    style F fill:#742a2a,color:#fff
+    style V fill:#22543d,color:#fff
+```
+
+The important half is that **a green checker is not a PASS.** The checker proves the command you declared; it cannot know whether the gate's English title describes what that command measures. So the verifier reads every `CHECK:` first and fails any gate that cannot fail — a command that always exits 0, an `EXPECT:` any output matches, a figure copied from the spec rather than measured. Without that step a ledger replaces judgment with a checkmark, which is *weaker* than prose verification. The `gate-backed-verify` eval exists to catch exactly that regression.
+
+Approval is the trust boundary: approved checks run with ambient filesystem, environment and network access, so gates are authored by the orchestrator **before** the spawn, the ledger path goes in the worker's `Scope OUT`, and a `CHECK:` nobody read is never approved. A worker that authors its own oracle has laundered the iron rule through a script.
+
 ---
 
 ## Worker lifecycle
@@ -242,6 +382,14 @@ claude plugin install legate@legate --scope user
 ```
 
 Legate depends on superpowers (`^6`, from the `claude-plugins-official` marketplace), which is resolved and installed automatically if missing. Restart or `/reload-plugins` to activate.
+
+Already installed? Pull a new release with:
+
+```bash
+claude plugin update legate
+```
+
+`CHANGELOG.md` records what each version changed. `unlazy` is **not** a dependency — gate-backed verification activates only if you install it separately, and Legate verifies exactly as before when it is absent.
 
 **Requires** Claude Code ≥ 2.1.196 (local-folder marketplace tag resolution). The `/goal` integration assumes ≥ 2.1.139; without it the goal proposal is simply inert text.
 
@@ -287,16 +435,18 @@ legate/
 │   │   ├── SKILL.md                # handoff contract template
 │   │   └── references/
 │   │       ├── tiers.md            # escalation tests + the only prose model names
-│   │       └── examples.md         # three complete filled-in contracts
-│   └── verify/SKILL.md             # verification protocol
+│   │       └── examples.md         # four complete filled-in contracts
+│   ├── split/SKILL.md              # partition work before concurrent spawns
+│   └── verify/SKILL.md             # verification protocol (+ optional gate backing)
 ├── agents/                         # explorer, implementer, architect, verifier
 ├── hooks/                          # SessionStart injection (zero-dependency bash)
-└── evals/                          # 7 behavioral cases + grader + fixture
+├── evals/                          # 9 behavioral cases + grader + fixture
+└── CHANGELOG.md                    # per-version notes for consumers
 ```
 
 ## Evals
 
-`evals/` holds seven behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, tier fit on small tasks (which grades the _absence_ of nagging as strictly as its presence), and progress checkpoints written into the contract rather than asked for mid-flight — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
+`evals/` holds nine behavioral cases — fan-out routing, correct non-delegation, the implement→verify pipeline, rejection of an unevidenced completion claim, the cost gate on judgment-free bulk work, tier fit on small tasks (which grades the _absence_ of nagging as strictly as its presence), progress checkpoints written into the contract rather than asked for mid-flight, partitioning concurrent work before contracts are written (the shared-seam trap), and adjudicating a rigged-but-green gate ledger — plus a grader rubric and a small fixture CLI. The layout targets Claude Code's `claude plugin eval` harness (`evals/**/prompt.md` + `graders/*.md`), which is currently early-access gated; `evals/README.md` documents the manual runner protocol used in the meantime.
 
 The first round's scorecard is in `evals/results/`. Honest summary: the discipline half passed cleanly (correct non-delegation, refusal of a false completion claim, TDD red→green with byte-exact evidence). The delegation half was **blocked, not passed** — the runner subagents had no Agent tool, so real handoffs and fresh-context verifier spawns could not fire. A harness that drives cases through `claude -p` subprocesses is the fix.
 
