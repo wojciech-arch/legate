@@ -26,8 +26,13 @@ Every spawn prompt MUST contain these sections, by name. Fill in every one — a
 
 ## Scope
 
-IN: <exact paths / repos / globs the worker may touch or read>
-OUT: <what is explicitly off-limits — adjacent files, other packages, refactors>
+IN: <exact paths / repos / globs the worker may read>
+OWNS: <write globs — required whenever another worker runs concurrently.
+Copy from the legate:split partition table; must be disjoint from every
+concurrent item's OWNS.>
+OUT: <what is explicitly off-limits. For a concurrent spawn this is the union
+of the other items' OWNS — derived from the partition table, never written
+from memory — plus anything else off-limits: adjacent files, refactors.>
 
 ## Expected evidence
 
@@ -52,6 +57,9 @@ If blocked: append `BLOCKED | <what> | <what would unblock it>`, then stop.
 - Completion condition: <one machine-checkable sentence — end state + check method,
   e.g. "`npm test` exits 0 and `mini version` prints the package.json version".
   This is what the verifier will test, verbatim.>
+- Gate (only if `unlazy` is installed): <ABSOLUTE PATH>/GATES.md#<gate id> — the same
+  sentence as a CHECK/EXPECT pair, authored here, before this spawn. Read it and run its
+  commands to check yourself; never edit it.
 - Max attempts: <N> on the same failure, then stop
 - If blocked or scope is wrong: STOP and report the blocker. Do not improvise.
 
@@ -62,6 +70,7 @@ If blocked: append `BLOCKED | <what> | <what would unblock it>`, then stop.
 - Refactor, rename, or "clean up" beyond the objective
 - Expand scope to a problem you discover mid-task — report it instead
 - Rewrite, truncate, or reorder the status file — append only
+- Write to, edit, or approve the gate ledger — read it and run its commands only
 
 ## Role-specific sub-skills
 
@@ -116,7 +125,7 @@ Goal proposal (paste to arm Claude Code's completion guard):
 /goal <the Completion condition, verbatim>
 ```
 
-The Completion condition line from the contract IS the goal text — write it once, use it in both places. Do not block on the user pasting it; delegation proceeds either way.
+The Completion condition line from the contract IS the goal text — write it once, use it in both places. If `unlazy` is installed it is written a third time, as the gate's `CHECK:`/`EXPECT:` pair (see legate:verify) — one sentence, one meaning, three consumers. Do not block on the user pasting it; delegation proceeds either way.
 
 `/goal` is user-facing only (no programmatic API; subagents never see it) — propose it, never assume it is set, and keep the Completion condition in every contract regardless. Skip the proposal for single-spawn quick tasks; it is for efforts that will span multiple turns or spawns.
 
@@ -140,6 +149,8 @@ Want the benefits of accumulated state without the liabilities? **Carry state ex
 
 ## Parallel dispatch
 
+**REQUIRED SUB-SKILL: legate:split** — before the first of two or more concurrent spawns. It produces the partition (`OWNS` per item, disjointness tested, dependency edges drawn) that `Scope OUT` is derived from. Two concurrent contracts written without one are two scopes invented from memory.
+
 Independent spawns (no shared files, no ordering dependency) go out as **multiple Agent calls in a single message** — that is what makes them run concurrently. One call per message runs them sequentially and wastes wall-clock time. REQUIRED BACKGROUND: superpowers:dispatching-parallel-agents for grouping into independent domains.
 
 Do NOT parallelize spawns that edit the same files or depend on each other's output — they clobber or block. Sequence those.
@@ -153,6 +164,8 @@ Worker results come back to you, the orchestrator, for synthesis — you own the
 ## Red flags — stop and write the contract
 
 - About to spawn with a one-line prompt and no Scope/OUT
+- Second concurrent contract being written with no partition table behind it
+- `OUT` filled from memory instead of from the other items' `OWNS`
 - "The agent will figure out what I mean"
 - Expected evidence is prose ("tell me it works") not artifacts
 - No stop condition — worker could loop or wander indefinitely

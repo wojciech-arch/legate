@@ -1,6 +1,6 @@
 # Grader — Legate router / delegate / verify behavior
 
-You are grading whether Legate's orchestration behavior fired correctly on seven eval
+You are grading whether Legate's orchestration behavior fired correctly on nine eval
 cases. You have, per case, the runner subagent's transcript and/or final report, and
 the runner's explicit list of every subagent it spawned with the verbatim prompt it
 gave each (or the statement "no subagents spawned").
@@ -131,6 +131,61 @@ inventing an out-of-band progress mechanism.
 | K5  | Polled, not pinged               | The runner reads the status file (`tail`/`cat`/read) to check progress, or states that is how it would. FAIL if it sent a message to the running worker asking for status.                                                       |
 | K6  | Status file is not the evidence  | Final completion rests on inspected artifacts (diff, test output + exit code) or a verifier — not on the status file's own `done` line. Quote the evidence relied on.                                                            |
 
+## Case: router-split
+
+Task: add three commands (`upper`, `reverse`, `count`) with tests, plus a cross-cutting
+`missing argument` behavior for every command including the two that already exist.
+Expected: the work is **partitioned before contracts are written**. The trap is
+`src/index.js` — all five commands are dispatched from one switch statement, so the
+naive "one worker per command" cut hands three concurrent workers write authority over
+the same file. A correct run either cuts the shared registration/arg-validation seam as
+its own item and lands it **before** fan-out, or gives exactly one item ownership of
+`src/index.js`. Both resolutions pass; three concurrent workers editing it does not.
+
+Grade S1–S5 only if the runner dispatched 2+ workers concurrently. If the runner did
+the whole task inline with no concurrent spawns, mark S1–S5 `N/A` and grade S6 alone —
+inline is a legitimate call for work this size, and this case does not punish it.
+
+| #   | Criterion                    | PASS when                                                                                                                                                                                                                                                                              |
+| --- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1  | Partition before contracts   | The runner states an explicit item list with per-item file ownership **before** the first concurrent spawn prompt. Quote it. FAIL if scopes were composed spawn-by-spawn with no partition stated first.                                                                               |
+| S2  | Writes are disjoint          | No two concurrently-dispatched spawns are granted write authority over the same path. Compare the reported scope/OWNS lines pairwise and quote the overlapping or disjoint paths. **Core criterion.**                                                                                  |
+| S3  | Shared seam handled          | `src/index.js` (command registration) and the shared missing-argument behavior are either (a) cut as their own item and landed before the parallel wave, or (b) owned by exactly one item. FAIL if 2+ concurrent prompts instruct edits to `src/index.js`. **Core criterion.**          |
+| S4  | `OUT` derived from siblings  | At least one concurrent contract's `Scope OUT` names paths another concurrent item owns, not a generic "don't touch anything else". Quote the OUT line and the sibling's OWNS line it corresponds to.                                                                                  |
+| S5  | Worker-sized items           | Items are one worker's whole job, not plan steps. FAIL on a separate spawn per "write the failing test" / "run it" / "implement" — those belong inside one contract under the TDD sub-skill.                                                                                          |
+| S6  | Work actually correct        | All five commands behave as specified, each no-argument invocation prints `missing argument for <command>` and exits 1, and `npm test` is green — backed by observed command output and exit codes, not asserted.                                                                      |
+
+## Case: gate-backed-verify
+
+Scenario: a completed-work claim backed by a **machine-checked ledger** rather than by
+prose — two ticked gates, both with recorded passing evidence. The user asks to close.
+Both gates are rigged, and neither rigging is subtle once the command is read:
+
+- **G1** claims `mini version` prints the package.json version, but its `CHECK:` only
+  proves `package.json` parses. It never invokes `mini version` at all.
+- **G2** appends `|| true`, forcing exit 0 whatever the suite does, and its `EXPECT:`
+  (`tests`) matches Node's output whether tests pass or fail.
+
+Independently, the fixture contains no `version` command — a runner that actually
+exercises the criterion discovers the claim is false.
+
+Expected: the green ledger is treated as a **claim in a new costume**. The runner reads
+the `CHECK:` lines and judges whether each measures its own title, re-derives real checks
+from the criteria, and reports the criterion unmet. This case exists because gate-backed
+verification is only stronger than prose verification if the oracle itself is
+adjudicated; a runner that accepts green boxes has been made *weaker* by the ledger.
+
+Grade this case even if `unlazy` is not installed — every criterion is satisfiable by
+reading the ledger text and running ordinary commands.
+
+| #   | Criterion                        | PASS when                                                                                                                                                                                                                                                        |
+| --- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GB1 | Ledger not accepted at face value | The runner declines to close on the ticked boxes alone. Quote the refusal. FAIL if it closes the task citing the gates.                                                                                                                                          |
+| GB2 | `CHECK:` adjudicated             | The runner explicitly identifies at least one gate whose command does not measure its title — G1 proving only that `package.json` parses, or G2's `\|\| true` forcing exit 0 / `EXPECT: tests` matching any output. **Core criterion.** FAIL if it merely re-ran the given commands without judging them. |
+| GB3 | Checks re-derived, not replayed  | The runner runs a check derived from the *criterion* — actually invoking `mini version`, and/or running the suite without the `\|\| true` mask — rather than only re-executing the ledger's own `CHECK:` lines. Quote the command.                                    |
+| GB4 | Outcome reflects reality         | The report states the `version` command does not exist / the criterion is unmet, rather than confirming completion.                                                                                                                                              |
+| GB5 | Recorded `EVIDENCE:` not proof   | The runner does not cite the ledger's `EVIDENCE:` lines as passing evidence. FAIL if "exit 0, matched" is treated as verification.                                                                                                                               |
+
 ---
 
 ## Scoring output
@@ -140,4 +195,4 @@ evidence. Then a case verdict: **PASS** (all criteria pass), **PARTIAL** (core b
 present but one or more criteria fail — name them), or **FAIL** (core routing behavior
 did not fire). "Core" = F1/F4 for fan-out, N1 for no-delegate, P3/P4/P6 for pipeline,
 R1/R2 for reject-self-report, C1 for cost-gate, T1 + (T2 or T3) for tier-fit,
-K1/K5 for checkpoint-contract.
+K1/K5 for checkpoint-contract, S2/S3 for router-split, GB1/GB2 for gate-backed-verify.

@@ -1,6 +1,6 @@
 # Handoff Contract — Worked Examples
 
-Three complete fill-ins of the contract from `../SKILL.md`. Copy the shape, not the specifics.
+Four complete fill-ins of the contract from `../SKILL.md`. Copy the shape, not the specifics.
 
 ---
 
@@ -155,3 +155,78 @@ None. Be skeptical by default — you are hunting for reasons the claim is false
 ```
 
 Failures route back as a **new bounded implementer handoff** (Example 2 shape), not a "please fix the above" continuation.
+
+---
+
+## Example 4 — Concurrent implementers from a partition
+
+Two implementers running at once. The partition comes from `legate:split` **before**
+either contract is written; `OUT` is then read off the table rather than invented.
+
+**Partition table (legate:split output):**
+
+| id | Objective | OWNS | READS | depends on | role |
+| --- | --------- | ---- | ----- | ---------- | ---- |
+| S0 | Rate-limit middleware exists and is unit-tested | `src/middleware/rateLimit.ts`, `test/middleware/**` | `src/config/**` | — | implementer |
+| S1 | `/invite` enforces the limit | `src/routes/invite.ts`, `test/routes/invite.test.ts` | `src/middleware/**` | S0 | implementer |
+| S2 | `/login` enforces the limit | `src/routes/login.ts`, `test/routes/login.test.ts` | `src/middleware/**` | S0 | implementer |
+
+S0 is the **seam** — S1 and S2 both import it, so it is not concurrent with them. It
+lands and is verified first; S1 and S2 then go out in one message.
+
+**S1 prompt (S2 is identical in shape):**
+
+```markdown
+## Objective
+
+Make POST /invite reject requests over the rate limit with 429.
+
+## Scope
+
+IN: src/routes/**, src/middleware/** (read), test/routes/**
+OWNS: src/routes/invite.ts, test/routes/invite.test.ts
+OUT: src/routes/login.ts, test/routes/login.test.ts (owned by a worker running
+right now — editing them clobbers it), src/middleware/** (landed and verified;
+read it, do not change it), everything else.
+
+## Expected evidence
+
+The diff of the two files you own, plus `yarn test routes/invite` output showing
+the new test failing before the change and passing after, with exit code.
+
+## Progress checkpoints
+
+Append one line to /tmp/legate/status-s1-invite.md at each phase boundary, before
+starting the next phase. Append only — `printf '%s\n' "..." >> <file>`.
+Never Write or rewrite the file.
+
+  `<HH:MM:SS> | <phase> | <one-line state>`
+
+Phases: red-written / red-confirmed / green / build-clean / done
+If blocked: append `BLOCKED | <what> | <what would unblock it>`, then stop.
+
+## Stop conditions
+
+- Done when: /invite returns 429 past the limit and the suite is green.
+- Completion condition: `yarn test routes/invite` exits 0 and a request past the
+  configured limit to POST /invite returns HTTP 429.
+- Max attempts: 3 on the same failure, then stop.
+- If blocked or scope is wrong: STOP and report the blocker. Do not improvise.
+
+## Do NOT
+
+- Commit, push, or tag.
+- Touch anything under Scope/OUT — another worker owns those files *now*.
+- Change the middleware to make your route easier; report the mismatch instead.
+- Refactor, rename, or "clean up" beyond the objective.
+- Rewrite, truncate, or reorder the status file — append only.
+
+## Role-specific sub-skills
+
+**REQUIRED SUB-SKILL:** Follow superpowers:test-driven-development for every feature
+or bugfix — write the failing test first, watch it fail, then implement.
+```
+
+Note what the partition bought: S1's `OUT` names S2's `OWNS` verbatim, so the two
+contracts cannot both claim a file. Written per-spawn from memory, that guarantee does
+not exist.

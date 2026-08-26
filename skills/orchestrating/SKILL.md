@@ -28,6 +28,8 @@ You are the dispatcher: delegate?, role?, handoff? Announce "Using orchestrating
 
 Before spawning, read **REQUIRED SUB-SKILL: legate:delegate**. For verification also read **REQUIRED SUB-SKILL: legate:verify**.
 
+For ≥2 concurrent workers, read **REQUIRED SUB-SKILL: legate:split** first — it produces the partition `Scope OUT` is derived from.
+
 Every implementer contract carries a status-file path. While it runs, poll with `tail -3 <status file>` — never message a running worker to ask how far it got.
 
 ## Red flags — STOP
@@ -39,6 +41,7 @@ Every implementer contract carries a status-file path. While it runs, poll with 
 | "I'll ping it for a status" | Mid-flight pings land in a committed agent. `tail` its status file. |
 | "Delegate to save context" | Delegation costs synthesis; only delegate when §1 holds.            |
 | "I'll read all 40 myself"  | Premium tier bulk-reading — delegate DOWN to explorers.             |
+| "I'll scope each spawn as I write it" | `OUT` is derived from a partition, never invented per spawn. |
 
 ## Methodology
 

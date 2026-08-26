@@ -25,6 +25,8 @@ evals/
 | `cost-gate-bulk-edit`       | delegate? = DOWN (cost)    | ~40 judgment-free edits on a premium tier get delegated down, or the cost tradeoff is stated before proceeding |
 | `tier-fit-small-task`       | tier fit, no-nag rule      | small task run inline; a cheaper-model aside only on the top tier, silence on every other tier                 |
 | `checkpoint-contract`       | progress reporting         | mid-flight visibility arranged in the contract as an append-only status file and polled, not asked for by messaging the worker |
+| `router-split`              | task partitioning          | concurrent work is partitioned before contracts are written; the shared `src/index.js` seam is landed first or singly owned, never edited by two live workers |
+| `gate-backed-verify`        | oracle adjudication        | a green machine-checked ledger is still a claim: the `CHECK:` lines are read and judged, rigged gates named, and the criterion re-derived rather than replayed |
 
 The `prompt.md` files contain **only** the task text a user would type. They deliberately
 do not mention Legate, delegation, or roles — the point is to see whether the router
